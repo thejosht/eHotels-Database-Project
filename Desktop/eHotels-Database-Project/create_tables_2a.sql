@@ -97,3 +97,11 @@ CREATE TABLE Renting (
        REFERENCES Booking(booking_id)
        ON DELETE SET NULL
 );
+--Index 1: For quick search of available rooms by capacity and price
+CREATE INDEX idx_rooms_capacity_price ON rooms(capacity, price);
+
+-- Index 2: For efficient lookup of bookings by start and end date
+CREATE INDEX idx_bookings_dates ON bookings(start_date, end_date);
+
+-- Index 3: For employee role-based filtering in hotels
+CREATE INDEX idx_employees_role_hotel ON employees(role, hotel_id);

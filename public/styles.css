@@ -60,9 +60,15 @@ nav {
 
 .logo {
     font-size: 1.8rem;
-    font-weight: bold;
+    font-weight: 700;
     color: var(--primary-color);
-    letter-spacing: -0.5px;
+    font-family: 'Playfair Display', serif;
+}
+
+.logo a {
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
 }
 
 .nav-links a {
@@ -999,9 +1005,16 @@ footer {
 
 .modal-logo {
     font-size: 1.8rem;
-    font-weight: bold;
+    font-weight: 700;
     color: var(--primary-color);
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
+    font-family: 'Playfair Display', serif;
+}
+
+.modal-logo a {
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
 }
 
 .modal h2 {

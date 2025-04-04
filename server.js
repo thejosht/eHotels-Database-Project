@@ -259,19 +259,35 @@ app.get('/api/rooms/available', async (req, res) => {
         // Enhance room data with amenities
         const enhancedRooms = await Promise.all(result.rows.map(async (room) => {
             try {
-                const amenitiesQuery = `
-                    SELECT a.name 
-                    FROM amenity a
-                    JOIN room_amenity ra ON a.id = ra.amenity_id
-                    WHERE ra.room_id = $1
+                // Check if amenity table exists
+                const tableCheckQuery = `
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_name = 'amenity'
+                    );
                 `;
-                const amenitiesResult = await pool.query(amenitiesQuery, [room.id]);
-                const amenities = amenitiesResult.rows.map(a => a.name);
+                const tableCheckResult = await pool.query(tableCheckQuery);
                 
-                return {
-                    ...room,
-                    amenities: amenities
-                };
+                if (tableCheckResult.rows[0].exists) {
+                    const amenitiesQuery = `
+                        SELECT a.name 
+                        FROM amenity a
+                        JOIN room_amenity ra ON a.id = ra.amenity_id
+                        WHERE ra.room_id = $1
+                    `;
+                    const amenitiesResult = await pool.query(amenitiesQuery, [room.id]);
+                    const amenities = amenitiesResult.rows.map(a => a.name);
+                    
+                    return {
+                        ...room,
+                        amenities: amenities
+                    };
+                } else {
+                    return {
+                        ...room,
+                        amenities: []
+                    };
+                }
             } catch (error) {
                 console.error('Error fetching amenities for room:', room.id, error);
                 return {

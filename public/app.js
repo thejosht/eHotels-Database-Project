@@ -297,22 +297,25 @@ function displayRoomResults(rooms) {
         if (room.sea_view) viewBadges.push('<span class="view-badge sea-view">Sea View</span>');
         if (room.mountain_view) viewBadges.push('<span class="view-badge mountain-view">Mountain View</span>');
         
+        // Ensure amenities exists
+        const amenities = room.amenities || [];
+        
         roomCard.innerHTML = `
             <div class="room-image-container">
-                <img src="${getRandomRoomImage(room)}" alt="${capitalize(room.capacity)} Room" class="room-image">
+                <img src="${getRandomRoomImage(room)}" alt="${capitalize(room.capacity || 'Standard')} Room" class="room-image">
                 <div class="room-category">${getStars(room.category)}</div>
                 ${viewBadges.length ? `<div class="view-badges">${viewBadges.join('')}</div>` : ''}
             </div>
             <div class="room-details">
                 <div class="room-header">
-                    <h3>${room.hotel_name}</h3>
-                    <p class="room-address"><img src="https://cdn-icons-png.flaticon.com/512/927/927667.png" width="14" height="14" alt="Location" /> ${room.address}</p>
+                    <h3>${room.hotel_name || 'Hotel'}</h3>
+                    <p class="room-address"><img src="https://cdn-icons-png.flaticon.com/512/927/927667.png" width="14" height="14" alt="Location" /> ${room.address || 'Address unavailable'}</p>
                 </div>
-                <p class="room-number">Room ${room.room_number} · ${capitalize(room.capacity)} Room</p>
+                <p class="room-number">Room ${room.room_number} · ${capitalize(room.capacity || 'Standard')} Room</p>
                 <p class="room-price">${formatPrice(room.price)}<span class="price-period">per night</span></p>
                 
                 <div class="room-amenities">
-                    ${room.amenities.map(amenity => `
+                    ${amenities.map(amenity => `
                         <span class="amenity-tag">${amenity}</span>
                     `).join('')}
                 </div>

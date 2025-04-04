@@ -27,14 +27,19 @@
         <!-- Home Section -->
         <section id="home-section">
             <div class="hero">
-                <h1>Welcome to e-Hotels</h1>
-                <p>Book your perfect stay in one of our luxury hotels across North America</p>
-                <a href="#search" class="cta-button">Find Your Room</a>
+                <div class="hero-content">
+                    <h1>Find Your Perfect Stay</h1>
+                    <p>Book luxury accommodations at the best rates across North America's finest hotel chains</p>
+                    <div class="hero-cta">
+                        <a href="#search" class="cta-button">Search Rooms</a>
+                        <a href="#views" class="cta-button secondary">Explore Hotels</a>
+                    </div>
+                </div>
             </div>
         </section>
 
         <!-- Search Section -->
-        <section id="search-section" class="hidden">
+        <section id="search-section" class="hidden section-container">
             <h1>Find Your Perfect Room</h1>
             <div class="search-form">
                 <div class="form-row">
@@ -169,21 +174,35 @@
         <div id="loginModal" class="modal hidden">
             <div class="modal-content">
                 <span class="close">&times;</span>
-                <h2>Login</h2>
+                <div class="modal-branding">
+                    <div class="modal-logo">e-Hotels</div>
+                    <h2>Welcome Back</h2>
+                    <p class="modal-subtitle">Sign in to continue your journey</p>
+                </div>
                 <form id="loginForm">
                     <div class="form-group">
-                        <label for="loginEmail">Email</label>
-                        <input type="email" id="loginEmail" required autocomplete="email">
+                        <label for="loginEmail">Email Address</label>
+                        <div class="input-with-icon">
+                            <input type="email" id="loginEmail" required autocomplete="email" placeholder="your.email@example.com">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label for="loginPassword">Password</label>
-                        <input type="password" id="loginPassword" required autocomplete="current-password">
+                        <div class="label-with-link">
+                            <label for="loginPassword">Password</label>
+                            <a href="#" class="forgot-link">Forgot Password?</a>
+                        </div>
+                        <div class="input-with-icon">
+                            <input type="password" id="loginPassword" required autocomplete="current-password" placeholder="Enter your password">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        </div>
                     </div>
                     <div class="form-group checkbox-group">
                         <input type="checkbox" id="isEmployee">
                         <label for="isEmployee">I am an employee</label>
                     </div>
-                    <button type="submit">Login</button>
+                    <button type="submit" class="form-button">Login</button>
+                    <p class="form-alt-action">Don't have an account? <a href="#" onclick="openModal('registerModal'); closeModal('loginModal'); return false;">Sign up</a></p>
                 </form>
             </div>
         </div>
@@ -191,41 +210,54 @@
         <div id="registerModal" class="modal hidden">
             <div class="modal-content">
                 <span class="close">&times;</span>
-                <h2>Register</h2>
+                <h2>Create Your Account</h2>
+                <p class="modal-subtitle">Join e-Hotels to book your perfect stay</p>
                 <form id="registerForm">
                     <div class="form-group">
                         <label for="regFullName">Full Name</label>
-                        <input type="text" id="regFullName" required autocomplete="name">
+                        <input type="text" id="regFullName" required autocomplete="name" placeholder="Enter your full name">
+                        <span class="validation-hint">Please enter your full name</span>
                     </div>
                     <div class="form-group">
                         <label for="regAddress">Address</label>
-                        <textarea id="regAddress" required autocomplete="address-line1"></textarea>
+                        <textarea id="regAddress" required autocomplete="street-address" placeholder="Enter your full address"></textarea>
+                        <span class="validation-hint">Your full address is required</span>
                     </div>
-                    <div class="form-group">
-                        <label for="regIdType">ID Type</label>
-                        <select id="regIdType" required>
-                            <option value="SSN">SSN</option>
-                            <option value="SIN">SIN</option>
-                            <option value="DL">Driver's License</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="regIdNumber">ID Number</label>
-                        <input type="text" id="regIdNumber" required>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="regIdType">ID Type</label>
+                            <select id="regIdType" required>
+                                <option value="">Select ID Type</option>
+                                <option value="SSN">SSN (Social Security Number)</option>
+                                <option value="SIN">SIN (Social Insurance Number)</option>
+                                <option value="DL">Driver's License</option>
+                            </select>
+                            <span class="validation-hint">Please select an ID type</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="regIdNumber">ID Number</label>
+                            <input type="text" id="regIdNumber" required placeholder="Enter your ID number">
+                            <span class="validation-hint">ID number is required</span>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="regEmail">Email</label>
-                        <input type="email" id="regEmail" required autocomplete="email">
+                        <input type="email" id="regEmail" required autocomplete="email" placeholder="your.email@example.com">
+                        <span class="validation-hint">Enter a valid email address</span>
                     </div>
                     <div class="form-group">
                         <label for="regPhone">Phone</label>
-                        <input type="tel" id="regPhone" required autocomplete="tel">
+                        <input type="tel" id="regPhone" required autocomplete="tel" placeholder="e.g. 555-123-4567">
+                        <span class="validation-hint">Phone number is required</span>
                     </div>
                     <div class="form-group">
                         <label for="regPassword">Password</label>
-                        <input type="password" id="regPassword" required autocomplete="new-password">
+                        <input type="password" id="regPassword" required autocomplete="new-password" placeholder="Choose a password (min. 6 characters)">
+                        <span class="validation-hint">Password must be at least 6 characters</span>
                     </div>
-                    <button type="submit">Register</button>
+                    <div class="form-note">All fields are required</div>
+                    <button type="submit">Create Account</button>
+                    <p class="form-alt-action">Already have an account? <a href="#" onclick="openModal('loginModal'); closeModal('registerModal'); return false;">Log in</a></p>
                 </form>
             </div>
         </div>

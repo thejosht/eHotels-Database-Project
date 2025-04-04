@@ -40,16 +40,35 @@ const authenticateToken = (req, res, next) => {
 // Auth routes
 app.post('/api/auth/register', async (req, res) => {
     try {
+        console.log('Registration request received:', req.body);
         const { fullName, address, idType, idNumber, email, phone, password } = req.body;
+        
+        // Check if email already exists
+        const existingUser = await pool.query('SELECT * FROM customer WHERE email = $1', [email]);
+        if (existingUser.rows.length > 0) {
+            console.log('Registration failed: Email already exists');
+            return res.status(400).json({ error: 'Email already in use' });
+        }
+        
+        // Check if ID already exists
+        const existingId = await pool.query('SELECT * FROM customer WHERE id_type = $1 AND id_number = $2', [idType, idNumber]);
+        if (existingId.rows.length > 0) {
+            console.log('Registration failed: ID already exists');
+            return res.status(400).json({ error: 'ID already in use' });
+        }
+        
         const hashedPassword = await bcrypt.hash(password, 10);
+        console.log('Password hashed successfully');
         
         const result = await pool.query(
             'INSERT INTO customer (full_name, address, id_type, id_number, email, phone, password) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
             [fullName, address, idType, idNumber, email, phone, hashedPassword]
         );
         
+        console.log('Registration successful, customer ID:', result.rows[0].id);
         res.status(201).json({ message: 'Registration successful' });
     } catch (err) {
+        console.error('Registration error:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -183,10 +202,17 @@ app.get('/api/rooms/available', async (req, res) => {
     try {
         const { checkIn, checkOut, capacity, area, chainId, category, maxPrice } = req.query;
         
+        console.log('Search parameters:', { checkIn, checkOut, capacity, area, chainId, category, maxPrice });
+        
+        if (!checkIn || !checkOut) {
+            return res.status(400).json({ error: 'Check-in and check-out dates are required' });
+        }
+        
         let query = `
-            SELECT r.*, h.name as hotel_name, h.category, h.address
+            SELECT r.*, h.name as hotel_name, h.category, h.address, h.chain_id, c.name as chain_name
             FROM room r
             JOIN hotel h ON r.hotel_id = h.id
+            LEFT JOIN hotel_chain c ON h.chain_id = c.id
             WHERE r.status = 'available'
             AND r.id NOT IN (
                 SELECT room_id FROM booking 
@@ -198,17 +224,17 @@ app.get('/api/rooms/available', async (req, res) => {
         const params = [checkIn, checkOut];
         let paramCount = 2;
         
-        if (capacity) {
+        if (capacity && capacity !== '') {
             paramCount++;
             params.push(capacity);
             query += ` AND r.capacity = $${paramCount}`;
         }
-        if (maxPrice) {
+        if (maxPrice && maxPrice !== '') {
             paramCount++;
             params.push(maxPrice);
             query += ` AND r.price <= $${paramCount}`;
         }
-        if (category) {
+        if (category && category !== '') {
             paramCount++;
             params.push(category);
             query += ` AND h.category = $${paramCount}`;
@@ -228,10 +254,37 @@ app.get('/api/rooms/available', async (req, res) => {
         console.log('Search params:', params);
         
         const result = await pool.query(query, params);
-        res.json(result.rows);
+        console.log(`Found ${result.rows.length} rooms matching criteria`);
+        
+        // Enhance room data with amenities
+        const enhancedRooms = await Promise.all(result.rows.map(async (room) => {
+            try {
+                const amenitiesQuery = `
+                    SELECT a.name 
+                    FROM amenity a
+                    JOIN room_amenity ra ON a.id = ra.amenity_id
+                    WHERE ra.room_id = $1
+                `;
+                const amenitiesResult = await pool.query(amenitiesQuery, [room.id]);
+                const amenities = amenitiesResult.rows.map(a => a.name);
+                
+                return {
+                    ...room,
+                    amenities: amenities
+                };
+            } catch (error) {
+                console.error('Error fetching amenities for room:', room.id, error);
+                return {
+                    ...room,
+                    amenities: []
+                };
+            }
+        }));
+        
+        res.json(enhancedRooms);
     } catch (err) {
         console.error('Error searching for rooms:', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'An error occurred while searching for rooms' });
     }
 });
 

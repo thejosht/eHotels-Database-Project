@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>e-Hotels - Book Your Perfect Stay</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">e-Hotels</div>
+            <div class="nav-links">
+                <a href="#" class="active">Home</a>
+                <a href="#search">Search</a>
+                <a href="#bookings" id="bookingsLink" class="auth-required hidden">My Bookings</a>
+                <a href="#employee" id="employeeLink" class="employee-only hidden">Employee Dashboard</a>
+                <a href="#views">View Database</a>
+                <a href="#login" id="loginBtn" class="auth-action">Login</a>
+                <a href="#register" id="registerBtn" class="auth-action">Register</a>
+                <a href="#logout" id="logoutBtn" class="auth-action hidden">Logout</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Home Section -->
+        <section id="home-section">
+            <div class="hero">
+                <h1>Welcome to e-Hotels</h1>
+                <p>Book your perfect stay in one of our luxury hotels across North America</p>
+                <a href="#search" class="cta-button">Find Your Room</a>
+            </div>
+        </section>
+
+        <!-- Search Section -->
+        <section id="search-section" class="hidden">
+            <h1>Find Your Perfect Room</h1>
+            <div class="search-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="checkIn">Check-in Date*</label>
+                        <input type="date" id="checkIn" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="checkOut">Check-out Date*</label>
+                        <input type="date" id="checkOut" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="capacity">Room Capacity</label>
+                        <select id="capacity">
+                            <option value="">Any</option>
+                            <option value="single">Single</option>
+                            <option value="double">Double</option>
+                            <option value="triple">Triple</option>
+                            <option value="quad">Quad</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="area">Area/Location</label>
+                        <input type="text" id="area" placeholder="e.g. New York, Ottawa">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="hotelChain">Hotel Chain</label>
+                        <select id="hotelChain">
+                            <option value="">Any</option>
+                            <!-- Will be populated by JavaScript -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="category">Hotel Category</label>
+                        <select id="category">
+                            <option value="">Any</option>
+                            <option value="1">⭐</option>
+                            <option value="2">⭐⭐</option>
+                            <option value="3">⭐⭐⭐</option>
+                            <option value="4">⭐⭐⭐⭐</option>
+                            <option value="5">⭐⭐⭐⭐⭐</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="price">Max Price per Night ($)</label>
+                        <input type="number" id="price" min="0" step="10" placeholder="e.g. 200">
+                    </div>
+                </div>
+                <div class="form-note">* Required fields</div>
+                <button onclick="searchRooms()" class="search-button">Search Available Rooms</button>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results-section" class="hidden">
+            <h2>Available Rooms</h2>
+            <div id="roomResults" class="room-grid"></div>
+        </section>
+
+        <!-- My Bookings Section -->
+        <section id="bookings-section" class="hidden">
+            <h2>My Bookings</h2>
+            <div id="userBookings" class="bookings-list"></div>
+        </section>
+
+        <!-- Employee Dashboard Section -->
+        <section id="employee-section" class="hidden">
+            <h2>Employee Dashboard</h2>
+            
+            <div class="dashboard-tabs">
+                <button class="tab-button active" onclick="showTab('pending-bookings')">Pending Bookings</button>
+                <button class="tab-button" onclick="showTab('direct-renting')">Create Direct Renting</button>
+            </div>
+            
+            <div id="pending-bookings" class="tab-content">
+                <h3>Pending Bookings</h3>
+                <div id="hotelBookings" class="bookings-list"></div>
+            </div>
+            
+            <div id="direct-renting" class="tab-content hidden">
+                <h3>Create Direct Renting (Walk-in Customer)</h3>
+                <form id="walkInForm" class="form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="walkInCustomer">Select Customer</label>
+                            <select id="walkInCustomer" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="walkInRoom">Select Room</label>
+                            <select id="walkInRoom" required></select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="walkInCheckIn">Check-in Date</label>
+                            <input type="date" id="walkInCheckIn" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="walkInCheckOut">Check-out Date</label>
+                            <input type="date" id="walkInCheckOut" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="walkInPayment">Payment Amount</label>
+                            <input type="number" id="walkInPayment" required>
+                        </div>
+                    </div>
+                    <button type="button" onclick="createDirectRenting()" class="action-button">Create Renting</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- Views Section -->
+        <section id="views-section" class="hidden">
+            <h2>Database Views</h2>
+            <div class="view-container">
+                <h3>Available Rooms by Area</h3>
+                <div id="availableRoomsView"></div>
+            </div>
+            <div class="view-container">
+                <h3>Hotel Capacity</h3>
+                <div id="hotelCapacityView"></div>
+            </div>
+        </section>
+
+        <!-- Auth Modals -->
+        <div id="loginModal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Login</h2>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="loginEmail">Email</label>
+                        <input type="email" id="loginEmail" required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Password</label>
+                        <input type="password" id="loginPassword" required autocomplete="current-password">
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="isEmployee">
+                        <label for="isEmployee">I am an employee</label>
+                    </div>
+                    <button type="submit">Login</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="registerModal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Register</h2>
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label for="regFullName">Full Name</label>
+                        <input type="text" id="regFullName" required autocomplete="name">
+                    </div>
+                    <div class="form-group">
+                        <label for="regAddress">Address</label>
+                        <textarea id="regAddress" required autocomplete="address-line1"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="regIdType">ID Type</label>
+                        <select id="regIdType" required>
+                            <option value="SSN">SSN</option>
+                            <option value="SIN">SIN</option>
+                            <option value="DL">Driver's License</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="regIdNumber">ID Number</label>
+                        <input type="text" id="regIdNumber" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="regEmail">Email</label>
+                        <input type="email" id="regEmail" required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="regPhone">Phone</label>
+                        <input type="tel" id="regPhone" required autocomplete="tel">
+                    </div>
+                    <div class="form-group">
+                        <label for="regPassword">Password</label>
+                        <input type="password" id="regPassword" required autocomplete="new-password">
+                    </div>
+                    <button type="submit">Register</button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>About e-Hotels</h3>
+                <p>A collaborative platform for five of the most well-known hotel chains across North America.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Contact Us</h3>
+                <p>Email: info@ehotels.com</p>
+                <p>Phone: 1-800-EHOTELS</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 e-Hotels - All Rights Reserved</p>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

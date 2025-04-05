@@ -245,12 +245,24 @@ function updateUIForUser(userType) {
 
 // API functions
 async function searchRooms() {
+    console.log('Searching for rooms...');
+    const resultsContainer = document.getElementById('search-results');
+    
     try {
+        // Get form values
         const checkIn = document.getElementById('check-in').value;
         const checkOut = document.getElementById('check-out').value;
-        const capacity = document.getElementById('capacity').value;
         const area = document.getElementById('area').value;
+        
+        // Validate required fields
+        if (!checkIn || !checkOut || !area) {
+            throw new Error('Please fill in all required fields (Check-in, Check-out, and City)');
+        }
+
+        // Get optional values
         const chainId = document.getElementById('chain-select').value;
+        const hotelId = document.getElementById('hotel-select').value;
+        const capacity = document.getElementById('capacity').value;
         const category = document.getElementById('category').value;
         const minPrice = document.getElementById('min-price').value;
         const maxPrice = document.getElementById('max-price').value;
@@ -258,28 +270,61 @@ async function searchRooms() {
         const mountainView = document.getElementById('mountain-view').checked;
         const extendable = document.getElementById('extendable').checked;
 
-        const params = new URLSearchParams({
-            checkIn,
-            checkOut,
-            capacity,
-            area,
-            chainId,
-            category,
-            minPrice,
-            maxPrice,
-            seaView,
-            mountainView,
-            extendable
+        // Build query parameters
+        const params = new URLSearchParams();
+        params.append('checkIn', checkIn);
+        params.append('checkOut', checkOut);
+        params.append('area', area);
+        
+        // Add optional parameters only if they have values
+        if (chainId) params.append('chainId', chainId);
+        if (hotelId) params.append('hotelId', hotelId);
+        if (capacity) params.append('capacity', capacity);
+        if (category) params.append('category', category);
+        if (minPrice) params.append('minPrice', minPrice);
+        if (maxPrice) params.append('maxPrice', maxPrice);
+        if (seaView) params.append('seaView', 'true');
+        if (mountainView) params.append('mountainView', 'true');
+        if (extendable) params.append('extendable', 'true');
+
+        console.log('Search parameters:', Object.fromEntries(params));
+
+        // Show loading state
+        if (resultsContainer) {
+            resultsContainer.innerHTML = '<div class="loading">Searching for rooms...</div>';
+        }
+
+        const response = await fetch(`/api/rooms/available?${params.toString()}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            }
         });
+        
+        console.log('Search response status:', response.status);
 
-        const response = await fetch(`/api/rooms/available?${params}`);
-        if (!response.ok) throw new Error('Failed to search rooms');
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Failed to search rooms:', errorText);
+            throw new Error(`Server error: ${errorText}`);
+        }
+
         const rooms = await response.json();
+        console.log('Search results:', rooms);
 
+        // Display the results
         displaySearchResults(rooms);
     } catch (error) {
         console.error('Error searching rooms:', error);
-        showNotification('Error searching rooms', 'error');
+        if (resultsContainer) {
+            resultsContainer.innerHTML = `
+                <div class="empty-results error">
+                    <p>Error searching for rooms:</p>
+                    <p>${error.message}</p>
+                    <p>Please try again or contact support if the problem persists.</p>
+                </div>
+            `;
+        }
     }
 }
 
@@ -808,37 +853,36 @@ async function loadDatabaseViews() {
 
 // UI Helpers
 function showSection(sectionId) {
-    console.log("Showing section:", sectionId);
+    console.log('Showing section:', sectionId);
     
     // Hide all sections
     document.querySelectorAll('main > section').forEach(section => {
+        section.classList.remove('active');
         section.classList.add('hidden');
     });
     
     // Show requested section
     const targetSection = document.getElementById(sectionId);
     if (!targetSection) {
-        console.error("Section not found:", sectionId);
+        console.error('Section not found:', sectionId);
         return;
     }
     
     targetSection.classList.remove('hidden');
-    console.log("Section displayed:", sectionId);
+    targetSection.classList.add('active');
+    console.log('Section displayed:', sectionId);
     
-    // Update active navigation
-    document.querySelectorAll('nav a').forEach(link => {
-        link.classList.remove('active');
-        
-        // Match href with section ID
-        const href = link.getAttribute('href');
-        console.log("Checking link:", href, "against section:", sectionId);
-        
-        if (href === '#' && sectionId === 'home-section') {
-            link.classList.add('active');
-        } else if (href && href.substring(1) + '-section' === sectionId) {
-            link.classList.add('active');
-        }
-    });
+    // Special handling for specific sections
+    if (sectionId === 'search-section') {
+        console.log('Search section shown - ensuring hotel chains are loaded');
+        fetchHotelChains();
+    } else if (sectionId === 'views-section') {
+        console.log('Views section shown - loading database views');
+        loadDatabaseViews();
+    } else if (sectionId === 'bookings-section') {
+        console.log('Bookings section shown - fetching user bookings');
+        fetchUserBookings();
+    }
 }
 
 function showTab(tabId) {
@@ -909,61 +953,183 @@ function showNotification(message, type = 'success') {
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
-    setupNavigation();
-    initializeDateInputs();
-    checkAuthStatus();
-    
-    // Initialize hotel select
-    const hotelSelect = document.getElementById('hotel-select');
-    if (hotelSelect) {
-        hotelSelect.innerHTML = '<option value="">All Hotels</option>';
-    }
+    console.log('DOM Content Loaded - Initializing app...');
     
     // Initialize search results container
-    const resultsContainer = document.getElementById('search-results');
-    if (resultsContainer) {
-        resultsContainer.innerHTML = `
-            <div class="empty-results">
-                <p>Search for rooms to see results.</p>
-            </div>
-        `;
+    const searchResultsContainer = document.getElementById('search-results');
+    if (searchResultsContainer) {
+        console.log('Search results container found');
+        searchResultsContainer.innerHTML = '<p class="search-prompt">Search for rooms to see available options</p>';
+    } else {
+        console.error('Search results container not found');
     }
-    
-    // Show search section and load hotel chains
-    showSection('search-section');
-    
-    // Load hotel chains immediately
+
+    // Set up search form listener
+    const searchForm = document.getElementById('search-form');
+    if (searchForm) {
+        console.log('Search form found - setting up submit listener');
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            console.log('Search form submitted');
+            searchRooms();
+        });
+    } else {
+        console.error('Search form not found');
+    }
+
+    // Initial fetch of hotel chains
+    console.log('Fetching hotel chains on page load');
     fetchHotelChains();
+
+    // Setup navigation
+    setupNavigation();
     
-    // Add event listener for hotel chain selection
+    // Initialize date inputs
+    initializeDateInputs();
+    
+    // Check authentication status
+    checkAuthStatus();
+    
+    // Setup modal close buttons
+    document.querySelectorAll('.modal .close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', function() {
+            const modal = this.closest('.modal');
+            if (modal) {
+                closeModal(modal.id);
+            }
+        });
+    });
+});
+
+// Setup navigation
+function setupNavigation() {
+    console.log('Setting up navigation...');
+    
+    // Handle navigation links
+    document.querySelectorAll('nav a, .hero-cta a').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const href = this.getAttribute('href');
+            const target = href.substring(1); // Remove the # from href
+            console.log('Navigation clicked:', target);
+            
+            if (target === '') {
+                // Home link clicked (empty target)
+                showSection('home-section');
+                return;
+            }
+            
+            if (target === 'login') {
+                openModal('loginModal');
+            } else if (target === 'register') {
+                openModal('registerModal');
+            } else if (target === 'logout') {
+                logout();
+            } else if (target === 'search') {
+                showSection('search-section');
+            } else if (target === 'views') {
+                showSection('views-section');
+                loadDatabaseViews();
+            } else {
+                const sectionId = target + '-section';
+                showSection(sectionId);
+            }
+            
+            // Update active link
+            document.querySelectorAll('nav a').forEach(navLink => {
+                navLink.classList.remove('active');
+            });
+            this.classList.add('active');
+        });
+    });
+}
+
+// Fetch hotel chains for dropdown
+async function fetchHotelChains() {
+    console.log('Fetching hotel chains...');
     const chainSelect = document.getElementById('chain-select');
-    if (chainSelect) {
-        chainSelect.addEventListener('change', async (e) => {
-            const chainId = e.target.value;
-            if (chainId) {
-                await loadHotelsByChain(chainId);
+    
+    if (!chainSelect) {
+        console.error('Chain select element not found');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/hotel-chains', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            }
+        });
+        
+        console.log('Hotel chains response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Failed to fetch hotel chains:', errorText);
+            chainSelect.innerHTML = '<option value="">Error loading chains</option>';
+            return;
+        }
+
+        const chains = await response.json();
+        console.log('Parsed chains:', chains);
+
+        // Clear existing options
+        chainSelect.innerHTML = '<option value="">All Chains</option>';
+        
+        if (Array.isArray(chains) && chains.length > 0) {
+            chains.forEach(chain => {
+                const option = document.createElement('option');
+                option.value = chain.id;
+                option.textContent = chain.name;
+                chainSelect.appendChild(option);
+            });
+        } else {
+            console.warn('No hotel chains found in response');
+            chainSelect.innerHTML = '<option value="">No chains available</option>';
+        }
+
+        // Set up chain select change listener
+        chainSelect.addEventListener('change', (e) => {
+            console.log('Chain selection changed:', e.target.value);
+            if (e.target.value) {
+                loadHotelsByChain(e.target.value);
             } else {
                 // Clear hotel selection if no chain is selected
                 const hotelSelect = document.getElementById('hotel-select');
-                hotelSelect.innerHTML = '<option value="">All Hotels</option>';
+                if (hotelSelect) {
+                    hotelSelect.innerHTML = '<option value="">All Hotels</option>';
+                }
             }
         });
+    } catch (error) {
+        console.error('Error fetching hotel chains:', error);
+        chainSelect.innerHTML = '<option value="">Error loading chains</option>';
     }
-    
-    // Add event listener for search form submission
-    const searchForm = document.getElementById('search-form');
-    if (searchForm) {
-        searchForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            searchRooms();
+}
+
+// Load hotels by chain
+async function loadHotelsByChain(chainId) {
+    try {
+        const response = await fetch(`/api/hotel-chains/${chainId}/hotels`);
+        if (!response.ok) throw new Error('Failed to load hotels');
+        const hotels = await response.json();
+        
+        const hotelSelect = document.getElementById('hotel-select');
+        hotelSelect.innerHTML = '<option value="">All Hotels</option>';
+        
+        hotels.forEach(hotel => {
+            const option = document.createElement('option');
+            option.value = hotel.id;
+            option.textContent = `${hotel.name} (${'★'.repeat(hotel.category)})`;
+            hotelSelect.appendChild(option);
         });
+    } catch (error) {
+        console.error('Error loading hotels:', error);
+        showNotification('Error loading hotels', 'error');
     }
-    
-    // Add event listener for search section
-    document.getElementById('search-section').addEventListener('show', () => {
-        fetchHotelChains(); // Reload hotel chains when search section is shown
-    });
-});
+}
 
 // Setup form validation
 function setupFormValidation() {
@@ -1067,57 +1233,6 @@ function initializeDateInputs() {
     }
 }
 
-// Setup navigation
-function setupNavigation() {
-    // Handle navigation links
-    document.querySelectorAll('nav a, .hero-cta a').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const href = this.getAttribute('href');
-            const target = href.substring(1); // Remove the # from href
-            console.log("Link clicked:", target);
-            
-            if (target === '') {
-                // Home link clicked (empty target)
-                showSection('home-section');
-                return;
-            }
-            
-            if (target === 'login') {
-                openModal('loginModal');
-            } else if (target === 'register') {
-                openModal('registerModal');
-            } else if (target === 'logout') {
-                logout();
-            } else if (target === 'search') {
-                showSection('search-section');
-            } else if (target === 'views') {
-                showSection('views-section');
-                loadDatabaseViews();
-            } else {
-                const sectionId = target + '-section';
-                showSection(sectionId);
-            }
-            
-            // Update active link
-            document.querySelectorAll('nav a').forEach(navLink => {
-                navLink.classList.remove('active');
-            });
-            this.classList.add('active');
-        });
-    });
-    
-    // Add click handler for the modal close buttons
-    document.querySelectorAll('.modal .close').forEach(closeBtn => {
-        closeBtn.addEventListener('click', function() {
-            const modal = this.closest('.modal');
-            if (modal) {
-                closeModal(modal.id);
-            }
-        });
-    });
-}
-
 // Check if user is logged in (from localStorage)
 function checkAuthStatus() {
     const token = localStorage.getItem('token');
@@ -1148,47 +1263,6 @@ function checkAuthStatus() {
     }
 }
 
-// Fetch hotel chains for dropdown
-async function fetchHotelChains() {
-    try {
-        console.log('Fetching hotel chains...');
-        const response = await fetch('/api/hotel-chains');
-        console.log('Response status:', response.status);
-        
-        if (!response.ok) {
-            const error = await response.json();
-            console.error('Error response:', error);
-            throw new Error(`Failed to load hotel chains: ${error.error || 'Unknown error'}`);
-        }
-        
-        const chains = await response.json();
-        console.log('Fetched chains:', chains);
-        
-        const chainSelect = document.getElementById('chain-select');
-        if (!chainSelect) {
-            console.error('Chain select element not found');
-            return;
-        }
-        
-        chainSelect.innerHTML = '<option value="">All Chains</option>';
-        
-        if (chains && chains.length > 0) {
-            chains.forEach(chain => {
-                const option = document.createElement('option');
-                option.value = chain.id;
-                option.textContent = chain.name;
-                chainSelect.appendChild(option);
-            });
-            console.log('Hotel chains loaded successfully');
-        } else {
-            console.log('No hotel chains found in the response');
-        }
-    } catch (error) {
-        console.error('Error loading hotel chains:', error);
-        showNotification('Error loading hotel chains: ' + error.message, 'error');
-    }
-}
-
 // Load hotels for employee registration
 async function loadHotelsForRegistration() {
     try {
@@ -1213,27 +1287,5 @@ async function loadHotelsForRegistration() {
     } catch (error) {
         console.error('Error loading hotels:', error);
         showNotification('Failed to load hotels. Please try again.', 'error');
-    }
-}
-
-// Load hotels by chain
-async function loadHotelsByChain(chainId) {
-    try {
-        const response = await fetch(`/api/hotel-chains/${chainId}/hotels`);
-        if (!response.ok) throw new Error('Failed to load hotels');
-        const hotels = await response.json();
-        
-        const hotelSelect = document.getElementById('hotel-select');
-        hotelSelect.innerHTML = '<option value="">All Hotels</option>';
-        
-        hotels.forEach(hotel => {
-            const option = document.createElement('option');
-            option.value = hotel.id;
-            option.textContent = `${hotel.name} (${'★'.repeat(hotel.category)})`;
-            hotelSelect.appendChild(option);
-        });
-    } catch (error) {
-        console.error('Error loading hotels:', error);
-        showNotification('Error loading hotels', 'error');
     }
 }

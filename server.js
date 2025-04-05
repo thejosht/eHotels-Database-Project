@@ -66,24 +66,33 @@ app.post('/api/auth/register', async (req, res) => {
         }
         
         // Check if email already exists
-        const emailCheck = await pool.query(
-            'SELECT * FROM customer WHERE email = $1 UNION SELECT * FROM employee WHERE email = $1', 
+        const emailCheckCustomer = await pool.query(
+            'SELECT * FROM customer WHERE email = $1', 
             [email]
         );
         
-        if (emailCheck.rows.length > 0) {
+        const emailCheckEmployee = await pool.query(
+            'SELECT * FROM employee WHERE email = $1', 
+            [email]
+        );
+        
+        if (emailCheckCustomer.rows.length > 0 || emailCheckEmployee.rows.length > 0) {
             console.log('Registration failed: Email already exists');
             return res.status(400).json({ error: 'Email already in use' });
         }
         
         // Check if ID already exists
-        const idCheck = await pool.query(
-            'SELECT * FROM customer WHERE id_type = $1 AND id_number = $2 UNION ' +
+        const idCheckCustomer = await pool.query(
+            'SELECT * FROM customer WHERE id_type = $1 AND id_number = $2',
+            [idType, idNumber]
+        );
+        
+        const idCheckEmployee = await pool.query(
             'SELECT * FROM employee WHERE id_type = $1 AND id_number = $2',
             [idType, idNumber]
         );
         
-        if (idCheck.rows.length > 0) {
+        if (idCheckCustomer.rows.length > 0 || idCheckEmployee.rows.length > 0) {
             console.log('Registration failed: ID already exists');
             return res.status(400).json({ error: 'ID already in use' });
         }

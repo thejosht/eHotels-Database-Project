@@ -268,85 +268,183 @@ button[type="submit"].search-button:active {
 }
 
 .search-results {
-    margin-top: 2rem;
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.rooms-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
+    gap: 24px;
+    padding: 20px 0;
 }
 
 .room-card {
-    background: var(--card-bg);
-    border-radius: 8px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    flex-direction: column;
 }
 
 .room-card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .room-header {
-    padding: 1rem;
-    background: var(--primary);
-    color: white;
+    padding: 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
 }
 
 .room-header h3 {
     margin: 0;
+    color: #2c3e50;
     font-size: 1.25rem;
+    font-weight: 600;
 }
 
 .chain-name {
-    font-size: 0.875rem;
-    opacity: 0.9;
+    display: block;
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-top: 4px;
 }
 
 .room-details {
-    padding: 1rem;
+    padding: 16px;
+    flex-grow: 1;
 }
 
 .room-details p {
-    margin: 0.5rem 0;
-    color: var(--text-secondary);
+    margin: 8px 0;
+    color: #495057;
+    line-height: 1.5;
 }
 
-.room-details strong {
-    color: var(--text-primary);
+.room-details p strong {
+    color: #343a40;
+    font-weight: 600;
 }
 
 .room-actions {
-    padding: 1rem;
-    border-top: 1px solid var(--border-color);
+    padding: 16px;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
     text-align: right;
 }
 
 .book-button {
-    padding: 0.75rem 1.5rem;
-    background: var(--primary);
+    background: #007bff;
     color: white;
     border: none;
-    border-radius: 4px;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 0.95rem;
     font-weight: 500;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s ease;
 }
 
 .book-button:hover {
-    background: var(--primary-dark);
+    background: #0056b3;
+}
+
+/* Debug info styling */
+.debug-info {
+    background: #f8f9fa;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    padding: 20px;
+}
+
+.debug-info h3 {
+    margin: 0 0 16px 0;
+    color: #343a40;
+}
+
+.debug-info pre {
+    background: white;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 8px 0;
+    overflow-x: auto;
+}
+
+/* Empty state and error messages */
+.empty-results, .error-message {
+    text-align: center;
+    padding: 40px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin: 20px 0;
+}
+
+.error-message {
+    background: #fff5f5;
+    color: #c53030;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+    font-size: 1.1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .rooms-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 16px;
+        padding: 16px 0;
+    }
+
+    .room-card {
+        border-radius: 8px;
+    }
+
+    .room-header {
+        padding: 12px;
+    }
+
+    .room-header h3 {
+        font-size: 1.1rem;
+    }
+
+    .room-details, .room-actions {
+        padding: 12px;
+    }
+
+    .book-button {
+        width: 100%;
+        padding: 12px;
+    }
 }
 
 .empty-results {
-    grid-column: 1 / -1;
     text-align: center;
-    padding: 3rem;
-    background: var(--card-bg);
-    border-radius: 8px;
+    padding: 2rem;
+    background-color: var(--light-gray);
+    border-radius: var(--border-radius);
+}
+
+.empty-results img {
+    margin-bottom: 1rem;
 }
 
 .empty-results p {
-    color: var(--text-secondary);
-    margin: 0.5rem 0;
+    color: var(--dark-gray);
+    margin-bottom: 1rem;
+}
+
+.empty-results p:last-child {
+    margin-bottom: 0;
 }
 
 .room-image-container {

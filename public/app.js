@@ -245,134 +245,209 @@ function updateUIForUser(userType) {
 
 // API functions
 async function searchRooms() {
-    console.log('Searching for rooms...');
     const resultsContainer = document.getElementById('search-results');
-    
+    if (!resultsContainer) {
+        console.error('Results container not found');
+        return;
+    }
+
     try {
+        // Show loading state
+        resultsContainer.innerHTML = '<div class="loading">Searching for rooms...</div>';
+
         // Get form values
         const checkIn = document.getElementById('check-in').value;
         const checkOut = document.getElementById('check-out').value;
         const area = document.getElementById('area').value;
-        
+
+        console.log('Form values:', { checkIn, checkOut, area });
+
         // Validate required fields
         if (!checkIn || !checkOut || !area) {
-            throw new Error('Please fill in all required fields (Check-in, Check-out, and City)');
+            throw new Error('Please fill in all required fields (Check-in, Check-out, and Area)');
         }
 
-        // Get optional values
-        const chainId = document.getElementById('chain-select').value;
-        const hotelId = document.getElementById('hotel-select').value;
-        const capacity = document.getElementById('capacity').value;
-        const category = document.getElementById('category').value;
-        const minPrice = document.getElementById('min-price').value;
-        const maxPrice = document.getElementById('max-price').value;
-        const seaView = document.getElementById('sea-view').checked;
-        const mountainView = document.getElementById('mountain-view').checked;
-        const extendable = document.getElementById('extendable').checked;
+        // Build search parameters
+        const params = new URLSearchParams({
+            checkIn,
+            checkOut,
+            area
+        });
 
-        // Build query parameters
-        const params = new URLSearchParams();
-        params.append('checkIn', checkIn);
-        params.append('checkOut', checkOut);
-        params.append('area', area);
-        
-        // Add optional parameters only if they have values
-        if (chainId) params.append('chainId', chainId);
-        if (hotelId) params.append('hotelId', hotelId);
-        if (capacity) params.append('capacity', capacity);
-        if (category) params.append('category', category);
-        if (minPrice) params.append('minPrice', minPrice);
-        if (maxPrice) params.append('maxPrice', maxPrice);
-        if (seaView) params.append('seaView', 'true');
-        if (mountainView) params.append('mountainView', 'true');
-        if (extendable) params.append('extendable', 'true');
+        // Add optional parameters
+        const optionalFields = {
+            chainId: 'chain-select',
+            hotelId: 'hotel-select',
+            capacity: 'capacity',
+            category: 'category',
+            minPrice: 'min-price',
+            maxPrice: 'max-price',
+            seaView: 'sea-view',
+            mountainView: 'mountain-view',
+            extendable: 'extendable'
+        };
+
+        Object.entries(optionalFields).forEach(([param, elementId]) => {
+            const element = document.getElementById(elementId);
+            if (element) {
+                const value = element.type === 'checkbox' ? element.checked : element.value;
+                if (value) {
+                    params.append(param, value);
+                }
+            }
+        });
 
         console.log('Search parameters:', Object.fromEntries(params));
 
-        // Show loading state
-        if (resultsContainer) {
-            resultsContainer.innerHTML = '<div class="loading">Searching for rooms...</div>';
-        }
-
-        const response = await fetch(`/api/rooms/available?${params.toString()}`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json'
-            }
-        });
-        
-        console.log('Search response status:', response.status);
+        const response = await fetch(`/api/rooms/available?${params}`);
+        console.log('Response status:', response.status);
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Failed to search rooms:', errorText);
-            throw new Error(`Server error: ${errorText}`);
+            console.error('Server error:', errorText);
+            throw new Error(`Search failed: ${errorText}`);
         }
 
-        const rooms = await response.json();
-        console.log('Search results:', rooms);
+        const data = await response.json();
+        console.log('Raw server response:', data);
 
-        // Display the results
-        displaySearchResults(rooms);
+        // Handle both array and object response formats
+        let results;
+        let debug = {};
+
+        if (Array.isArray(data)) {
+            // Server returned array directly
+            results = data;
+        } else if (typeof data === 'object' && data !== null) {
+            // Server returned object with results property
+            results = data.results || [];
+            debug = data.debug || {};
+        } else {
+            throw new Error('Invalid response format from server');
+        }
+
+        // Store debug information
+        window.lastSearchDebug = debug;
+        window.lastSearchParams = Object.fromEntries(params);
+
+        // Display results
+        console.log(`Found ${results.length} rooms`);
+        displaySearchResults(results);
     } catch (error) {
-        console.error('Error searching rooms:', error);
-        if (resultsContainer) {
-            resultsContainer.innerHTML = `
-                <div class="empty-results error">
-                    <p>Error searching for rooms:</p>
-                    <p>${error.message}</p>
-                    <p>Please try again or contact support if the problem persists.</p>
-                </div>
-            `;
-        }
+        console.error('Search error:', error);
+        resultsContainer.innerHTML = `
+            <div class="error-message">
+                <p>Error searching for rooms:</p>
+                <p>${error.message}</p>
+                <p>Please try again or contact support if the problem persists.</p>
+            </div>
+        `;
     }
 }
 
 function displaySearchResults(rooms) {
+    console.log('Displaying results:', rooms);
     const resultsContainer = document.getElementById('search-results');
-    resultsContainer.innerHTML = '';
-
-    if (rooms.length === 0) {
-        resultsContainer.innerHTML = `
-            <div class="empty-results">
-                <p>No rooms found matching your criteria.</p>
-                <p>Try adjusting your search filters.</p>
-            </div>
-        `;
+    if (!resultsContainer) {
+        console.error('Results container not found!');
         return;
     }
 
-    rooms.forEach(room => {
+    // Clear previous results
+    resultsContainer.innerHTML = '';
+
+    // Add debug information at the top
+    const debugInfo = document.createElement('div');
+    debugInfo.className = 'debug-info';
+    const params = window.lastSearchParams || {};
+    const debug = window.lastSearchDebug || {};
+
+    debugInfo.innerHTML = `
+        <div style="background: #f0f0f0; padding: 20px; margin-bottom: 20px; border-radius: 8px; font-family: monospace;">
+            <h3 style="margin-bottom: 15px;">Debug Info:</h3>
+            <p><strong>Number of rooms found:</strong> ${rooms ? rooms.length : 0}</p>
+            
+            <h4 style="margin: 15px 0;">Search Parameters:</h4>
+            <pre style="background: #fff; padding: 15px; border-radius: 4px; overflow-x: auto;">
+Check-in:      ${params.checkIn || 'Not set'}
+Check-out:     ${params.checkOut || 'Not set'}
+Area:          ${params.area || 'Not set'}
+Chain ID:      ${params.chainId || 'Any'}
+Hotel ID:      ${params.hotelId || 'Any'}
+Capacity:      ${params.capacity || 'Any'}
+Category:      ${params.category || 'Any'}
+Price Range:   ${params.minPrice ? '$' + params.minPrice : 'Any'} - ${params.maxPrice ? '$' + params.maxPrice : 'Any'}
+Sea View:      ${params.seaView ? 'Yes' : 'No'}
+Mountain View: ${params.mountainView ? 'Yes' : 'No'}
+Extendable:    ${params.extendable ? 'Yes' : 'No'}</pre>
+            
+            ${debug.query ? `
+                <h4 style="margin: 15px 0;">SQL Query:</h4>
+                <pre style="background: #fff; padding: 15px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap;">${debug.query}</pre>
+                
+                <h4 style="margin: 15px 0;">Query Parameters:</h4>
+                <pre style="background: #fff; padding: 15px; border-radius: 4px; overflow-x: auto;">${JSON.stringify(debug.parameters, null, 2)}</pre>
+                
+                ${debug.matchingHotels && debug.matchingHotels.length > 0 ? `
+                    <h4 style="margin: 15px 0;">Matching Hotels:</h4>
+                    <pre style="background: #fff; padding: 15px; border-radius: 4px; overflow-x: auto;">${debug.matchingHotels.join('\n')}</pre>
+                ` : ''}
+            ` : ''}
+        </div>
+    `;
+    resultsContainer.appendChild(debugInfo);
+
+    // If no rooms found, show empty state
+    if (!rooms || rooms.length === 0) {
+        const emptyState = document.createElement('div');
+        emptyState.className = 'empty-results';
+        emptyState.innerHTML = `
+            <p>No rooms found matching your criteria.</p>
+            <p>Try adjusting your search filters.</p>
+        `;
+        resultsContainer.appendChild(emptyState);
+        return;
+    }
+
+    // Create grid container for room cards
+    const roomsGrid = document.createElement('div');
+    roomsGrid.className = 'rooms-grid';
+
+    // Add each room card
+    rooms.forEach((room, index) => {
+        console.log(`Processing room ${index}:`, room);
         const roomCard = document.createElement('div');
         roomCard.className = 'room-card';
-        
-        const amenities = room.amenities.join(', ');
+
         const views = [];
         if (room.sea_view) views.push('Sea View');
         if (room.mountain_view) views.push('Mountain View');
-        
+
         roomCard.innerHTML = `
             <div class="room-header">
-                <h3>${room.hotel_name}</h3>
-                <span class="chain-name">${room.chain_name}</span>
+                <h3>${room.hotel_name || 'Unknown Hotel'}</h3>
+                <span class="chain-name">${room.chain_name || 'Unknown Chain'}</span>
             </div>
             <div class="room-details">
-                <p><strong>Room Number:</strong> ${room.room_number}</p>
-                <p><strong>Capacity:</strong> ${room.capacity}</p>
-                <p><strong>Price:</strong> $${room.price}/night</p>
-                <p><strong>Category:</strong> ${'★'.repeat(room.hotel_category)}</p>
-                <p><strong>Location:</strong> ${room.hotel_address}</p>
-                <p><strong>Amenities:</strong> ${amenities}</p>
+                <p><strong>Room Number:</strong> ${room.room_number || 'N/A'}</p>
+                <p><strong>Capacity:</strong> ${room.capacity || 'N/A'}</p>
+                <p><strong>Price:</strong> ${formatPrice(room.price)}/night</p>
+                <p><strong>Category:</strong> ${room.hotel_category ? '★'.repeat(room.hotel_category) : 'N/A'}</p>
+                <p><strong>Location:</strong> ${room.hotel_address || 'Address not available'}</p>
                 ${views.length > 0 ? `<p><strong>Views:</strong> ${views.join(', ')}</p>` : ''}
                 ${room.extendable ? '<p><strong>Extendable Room</strong></p>' : ''}
             </div>
             <div class="room-actions">
-                <button onclick="bookRoom(${room.id})" class="book-button">Book Now</button>
+                <button onclick="bookRoom('${room.id}')" class="book-button">Book Now</button>
             </div>
         `;
-        
-        resultsContainer.appendChild(roomCard);
+
+        roomsGrid.appendChild(roomCard);
     });
+
+    // Add the grid to the results container
+    resultsContainer.appendChild(roomsGrid);
+    console.log('Results displayed successfully');
 }
 
 async function bookRoom(roomId) {
@@ -381,8 +456,8 @@ async function bookRoom(roomId) {
         return;
     }
 
-    const checkIn = document.getElementById('checkIn').value;
-    const checkOut = document.getElementById('checkOut').value;
+    const checkIn = document.getElementById('check-in').value;
+    const checkOut = document.getElementById('check-out').value;
 
     try {
         const response = await fetch('/api/bookings', {

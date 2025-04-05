@@ -433,7 +433,17 @@ app.get('/api/rooms/available', async (req, res) => {
             console.log('Hotels matching area search:', matchingAreas.rows);
         }
         
-        res.json(result.rows);
+        // Include query information in the response
+        res.json({
+            results: result.rows,
+            debug: {
+                query: query,
+                parameters: queryParams,
+                matchingHotels: result.rows.length > 0 
+                    ? [...new Set(result.rows.map(r => r.hotel_name))]
+                    : []
+            }
+        });
     } catch (error) {
         console.error('Error searching rooms:', error);
         res.status(500).json({ 

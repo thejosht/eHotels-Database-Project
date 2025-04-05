@@ -206,86 +206,166 @@ section h2 {
 }
 
 .search-form {
-    background-color: var(--white);
-    padding: 2.5rem;
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
-    margin-top: 1.5rem;
+    background: var(--card-bg);
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .form-row {
     display: flex;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
+    gap: 1rem;
+    margin-bottom: 1rem;
 }
 
 .form-group {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
-label {
-    display: block;
-    margin-bottom: 0.6rem;
+.form-group label {
     font-weight: 500;
-    color: var(--text-color);
+    color: var(--text-secondary);
 }
 
-input, select, textarea {
-    width: 100%;
-    padding: 0.9rem 1rem;
-    border: 1px solid var(--light-gray);
-    border-radius: var(--border-radius);
-    font-size: 1rem;
-    transition: var(--transition);
+.form-group input,
+.form-group select {
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    color: var(--text-primary);
 }
 
-input:focus, select:focus, textarea:focus {
+.form-group input:focus,
+.form-group select:focus {
     outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(53, 99, 233, 0.1);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
 
-.search-button, .action-button, .book-button {
-    background-color: var(--primary-color);
-    color: var(--white);
-    border: none;
-    padding: 1rem 2rem;
-    border-radius: var(--border-radius);
-    font-size: 1rem;
-    font-weight: 600;
+.checkbox-group {
+    display: flex;
+    flex-direction: row;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     cursor: pointer;
-    transition: var(--transition);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
-.search-button:hover, .action-button:hover, .book-button:hover {
-    background-color: var(--secondary-color);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+.checkbox-group input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    cursor: pointer;
 }
 
-.search-button:active, .action-button:active, .book-button:active {
+.search-button {
+    width: 100%;
+    padding: 1rem;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.search-button:hover {
+    background: var(--primary-dark);
+}
+
+.search-button:active {
     transform: translateY(0);
 }
 
-.room-grid {
+.search-results {
+    margin-top: 2rem;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 2.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
 }
 
 .room-card {
-    background-color: var(--white);
-    border-radius: var(--border-radius);
+    background: var(--card-bg);
+    border-radius: 8px;
     overflow: hidden;
-    box-shadow: var(--box-shadow);
-    transition: var(--transition);
-    border: 1px solid var(--light-gray);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
 }
 
 .room-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.room-header {
+    padding: 1rem;
+    background: var(--primary);
+    color: white;
+}
+
+.room-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.chain-name {
+    font-size: 0.875rem;
+    opacity: 0.9;
+}
+
+.room-details {
+    padding: 1rem;
+}
+
+.room-details p {
+    margin: 0.5rem 0;
+    color: var(--text-secondary);
+}
+
+.room-details strong {
+    color: var(--text-primary);
+}
+
+.room-actions {
+    padding: 1rem;
+    border-top: 1px solid var(--border-color);
+    text-align: right;
+}
+
+.book-button {
+    padding: 0.75rem 1.5rem;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.book-button:hover {
+    background: var(--primary-dark);
+}
+
+.empty-results {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 3rem;
+    background: var(--card-bg);
+    border-radius: 8px;
+}
+
+.empty-results p {
+    color: var(--text-secondary);
+    margin: 0.5rem 0;
 }
 
 .room-image-container {
@@ -298,16 +378,6 @@ input:focus, select:focus, textarea:focus {
     width: 100%;
     height: 220px;
     object-fit: cover;
-}
-
-.room-details {
-    padding: 1.8rem;
-}
-
-.room-details h3 {
-    margin-bottom: 0.8rem;
-    color: var(--text-color);
-    font-size: 1.4rem;
 }
 
 .room-price {
@@ -370,10 +440,6 @@ input:focus, select:focus, textarea:focus {
     background-color: rgba(16, 185, 129, 0.9);
 }
 
-.room-header {
-    margin-bottom: 0.7rem;
-}
-
 .room-address {
     color: var(--dark-gray);
     font-size: 0.9rem;
@@ -399,24 +465,8 @@ input:focus, select:focus, textarea:focus {
     margin-left: 0.3rem;
 }
 
-.book-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    margin-top: 1rem;
-}
-
-.book-button svg {
-    transition: transform 0.2s ease;
-}
-
 .book-button:hover svg {
     transform: translateX(3px);
-}
-
-.book-button:hover {
-    background-color: var(--secondary-color);
 }
 
 .bookings-list {
@@ -960,10 +1010,14 @@ footer {
     
     .form-row {
         flex-direction: column;
-        gap: 1rem;
     }
     
-    .room-grid, .bookings-list {
+    .checkbox-group {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .search-results {
         grid-template-columns: 1fr;
     }
     
@@ -1131,6 +1185,7 @@ footer {
     margin-bottom: 0;
     cursor: pointer;
 }
+
 .modal-content {
     width: 600px;  
     height: auto;  

@@ -42,60 +42,99 @@
 
         <!-- Search Section -->
         <section id="search-section" class="hidden section-container">
-            <h1>Find Your Perfect Room</h1>
-            <div class="search-form">
+            <h2>Find Your Perfect Room</h2>
+            <form id="search-form" class="search-form">
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="checkIn">Check-in Date*</label>
-                        <input type="date" id="checkIn" required>
+                        <label for="check-in">Check-in Date*</label>
+                        <input type="date" id="check-in" name="check-in" required>
                     </div>
                     <div class="form-group">
-                        <label for="checkOut">Check-out Date*</label>
-                        <input type="date" id="checkOut" required>
+                        <label for="check-out">Check-out Date*</label>
+                        <input type="date" id="check-out" name="check-out" required>
                     </div>
                 </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="area">City*</label>
+                        <input type="text" id="area" name="area" placeholder="e.g., New York, Chicago" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="chain-select">Hotel Chain</label>
+                        <select id="chain-select" name="chain">
+                            <option value="">All Chains</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="hotel-select">Hotel</label>
+                        <select id="hotel-select" name="hotel">
+                            <option value="">All Hotels</option>
+                        </select>
+                    </div>
+                </div>
+                
                 <div class="form-row">
                     <div class="form-group">
                         <label for="capacity">Room Capacity</label>
-                        <select id="capacity">
+                        <select id="capacity" name="capacity">
                             <option value="">Any</option>
                             <option value="single">Single</option>
                             <option value="double">Double</option>
                             <option value="triple">Triple</option>
                             <option value="quad">Quad</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="area">Area/Location</label>
-                        <input type="text" id="area" placeholder="e.g. New York, Ottawa">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="hotelChain">Hotel Chain</label>
-                        <select id="hotelChain">
-                            <option value="">Any</option>
-                            <!-- Will be populated by JavaScript -->
+                            <option value="suite">Suite</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="category">Hotel Category</label>
-                        <select id="category">
+                        <select id="category" name="category">
                             <option value="">Any</option>
-                            <option value="1">⭐</option>
-                            <option value="2">⭐⭐</option>
-                            <option value="3">⭐⭐⭐</option>
-                            <option value="4">⭐⭐⭐⭐</option>
-                            <option value="5">⭐⭐⭐⭐⭐</option>
+                            <option value="3">3 Stars</option>
+                            <option value="4">4 Stars</option>
+                            <option value="5">5 Stars</option>
                         </select>
                     </div>
+                </div>
+                
+                <div class="form-row">
                     <div class="form-group">
-                        <label for="price">Max Price per Night ($)</label>
-                        <input type="number" id="price" min="0" step="10" placeholder="e.g. 200">
+                        <label for="min-price">Min Price ($)</label>
+                        <input type="number" id="min-price" name="min-price" min="0" step="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="max-price">Max Price ($)</label>
+                        <input type="number" id="max-price" name="max-price" min="0" step="10">
                     </div>
                 </div>
-                <div class="form-note">* Required fields</div>
-                <button onclick="searchRooms()" class="search-button">Search Available Rooms</button>
+                
+                <div class="form-row">
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="sea-view" name="sea-view">
+                            Sea View
+                        </label>
+                        <label>
+                            <input type="checkbox" id="mountain-view" name="mountain-view">
+                            Mountain View
+                        </label>
+                        <label>
+                            <input type="checkbox" id="extendable" name="extendable">
+                            Extendable Room
+                        </label>
+                    </div>
+                </div>
+                
+                <button type="submit" class="search-button">Search Rooms</button>
+            </form>
+            
+            <div id="search-results" class="search-results">
+                <div class="empty-results">
+                    <p>Search for rooms to see results.</p>
+                </div>
             </div>
         </section>
 

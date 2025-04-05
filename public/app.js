@@ -245,128 +245,87 @@ function updateUIForUser(userType) {
 
 // API functions
 async function searchRooms() {
-    const checkIn = document.getElementById('checkIn').value;
-    const checkOut = document.getElementById('checkOut').value;
-    const capacity = document.getElementById('capacity').value;
-    const area = document.getElementById('area').value;
-    const chainId = document.getElementById('hotelChain').value;
-    const category = document.getElementById('category').value;
-    const maxPrice = document.getElementById('price').value;
-
-    // Validation
-    if (!checkIn || !checkOut) {
-        alert('Please select check-in and check-out dates');
-        return;
-    }
-
     try {
-        const response = await fetch(`/api/rooms/available?checkIn=${checkIn}&checkOut=${checkOut}&capacity=${capacity}&area=${area}&chainId=${chainId}&category=${category}&maxPrice=${maxPrice}`);
+        const checkIn = document.getElementById('check-in').value;
+        const checkOut = document.getElementById('check-out').value;
+        const capacity = document.getElementById('capacity').value;
+        const area = document.getElementById('area').value;
+        const chainId = document.getElementById('chain-select').value;
+        const category = document.getElementById('category').value;
+        const minPrice = document.getElementById('min-price').value;
+        const maxPrice = document.getElementById('max-price').value;
+        const seaView = document.getElementById('sea-view').checked;
+        const mountainView = document.getElementById('mountain-view').checked;
+        const extendable = document.getElementById('extendable').checked;
+
+        const params = new URLSearchParams({
+            checkIn,
+            checkOut,
+            capacity,
+            area,
+            chainId,
+            category,
+            minPrice,
+            maxPrice,
+            seaView,
+            mountainView,
+            extendable
+        });
+
+        const response = await fetch(`/api/rooms/available?${params}`);
+        if (!response.ok) throw new Error('Failed to search rooms');
         const rooms = await response.json();
-        displayRoomResults(rooms);
-        
-        // Show results section
-        document.getElementById('results-section').classList.remove('hidden');
-        showSection('results-section');
+
+        displaySearchResults(rooms);
     } catch (error) {
         console.error('Error searching rooms:', error);
-        alert('Error searching for rooms. Please try again.');
+        showNotification('Error searching rooms', 'error');
     }
 }
 
-function displayRoomResults(rooms) {
-    const resultsContainer = document.getElementById('roomResults');
+function displaySearchResults(rooms) {
+    const resultsContainer = document.getElementById('search-results');
     resultsContainer.innerHTML = '';
 
     if (rooms.length === 0) {
-        resultsContainer.innerHTML = '<div class="empty-results"><img src="https://cdn-icons-png.flaticon.com/512/6134/6134065.png" width="120"><p>No rooms found matching your criteria.<br>Try adjusting your search filters.</p></div>';
+        resultsContainer.innerHTML = `
+            <div class="empty-results">
+                <p>No rooms found matching your criteria.</p>
+                <p>Try adjusting your search filters.</p>
+            </div>
+        `;
         return;
     }
-    
-    // Get room images based on hotel category and amenities
-    const getRandomRoomImage = (room) => {
-        const category = room.category || 3;
-        
-        // High quality images for different room types and categories
-        const roomImages = {
-            single: [
-                'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                'https://images.unsplash.com/photo-1618773928121-c33d57733427?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                'https://images.unsplash.com/photo-1566665797739-1674de7a421a?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-            ],
-            double: [
-                'https://images.unsplash.com/photo-1590490360182-c33d57733427?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                'https://images.unsplash.com/photo-1566665797739-1674de7a421a?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-            ],
-            triple: [
-                'https://images.unsplash.com/photo-1586105251261-72a756497a11?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                'https://images.unsplash.com/photo-1595576508898-0ad5c879a061?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-            ],
-            quad: [
-                'https://images.unsplash.com/photo-1595576508898-0ad5c879a061?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                'https://images.unsplash.com/photo-1629140727571-9b5c6f6267b4?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-            ]
-        };
-        
-        // Default to double if capacity not found
-        const capacity = room.capacity || 'double';
-        const images = roomImages[capacity] || roomImages.double;
-        
-        // Pick a random image from the array
-        const randomIndex = Math.floor(Math.random() * images.length);
-        return images[randomIndex];
-    };
-    
-    // Capitalize first letter
-    const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
-    
-    // Get stars for hotel category
-    const getStars = (category) => {
-        category = Number(category) || 0;
-        return '⭐'.repeat(category);
-    };
 
     rooms.forEach(room => {
         const roomCard = document.createElement('div');
         roomCard.className = 'room-card';
         
-        // Get view badges
-        const viewBadges = [];
-        if (room.sea_view) viewBadges.push('<span class="view-badge sea-view">Sea View</span>');
-        if (room.mountain_view) viewBadges.push('<span class="view-badge mountain-view">Mountain View</span>');
-        
-        // Ensure amenities exists
-        const amenities = room.amenities || [];
+        const amenities = room.amenities.join(', ');
+        const views = [];
+        if (room.sea_view) views.push('Sea View');
+        if (room.mountain_view) views.push('Mountain View');
         
         roomCard.innerHTML = `
-            <div class="room-image-container">
-                <img src="${getRandomRoomImage(room)}" alt="${capitalize(room.capacity || 'Standard')} Room" class="room-image">
-                <div class="room-category">${getStars(room.category)}</div>
-                ${viewBadges.length ? `<div class="view-badges">${viewBadges.join('')}</div>` : ''}
+            <div class="room-header">
+                <h3>${room.hotel_name}</h3>
+                <span class="chain-name">${room.chain_name}</span>
             </div>
             <div class="room-details">
-                <div class="room-header">
-                    <h3>${room.hotel_name || 'Hotel'}</h3>
-                    <p class="room-address"><img src="https://cdn-icons-png.flaticon.com/512/927/927667.png" width="14" height="14" alt="Location" /> ${room.address || 'Address unavailable'}</p>
-                </div>
-                <p class="room-number">Room ${room.room_number} · ${capitalize(room.capacity || 'Standard')} Room</p>
-                <p class="room-price">${formatPrice(room.price)}<span class="price-period">per night</span></p>
-                
-                <div class="room-amenities">
-                    ${amenities.map(amenity => `
-                        <span class="amenity-tag">${amenity}</span>
-                    `).join('')}
-                </div>
-                <button onclick="bookRoom('${room.id}')" class="book-button">
-                    <span>Book Now</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
-                    </svg>
-                </button>
+                <p><strong>Room Number:</strong> ${room.room_number}</p>
+                <p><strong>Capacity:</strong> ${room.capacity}</p>
+                <p><strong>Price:</strong> $${room.price}/night</p>
+                <p><strong>Category:</strong> ${'★'.repeat(room.hotel_category)}</p>
+                <p><strong>Location:</strong> ${room.hotel_address}</p>
+                <p><strong>Amenities:</strong> ${amenities}</p>
+                ${views.length > 0 ? `<p><strong>Views:</strong> ${views.join(', ')}</p>` : ''}
+                ${room.extendable ? '<p><strong>Extendable Room</strong></p>' : ''}
+            </div>
+            <div class="room-actions">
+                <button onclick="bookRoom(${room.id})" class="book-button">Book Now</button>
             </div>
         `;
+        
         resultsContainer.appendChild(roomCard);
     });
 }
@@ -949,44 +908,61 @@ function showNotification(message, type = 'success') {
 }
 
 // Event Listeners
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize navigation
+document.addEventListener('DOMContentLoaded', () => {
     setupNavigation();
-    
-    // Setup event listeners for forms
-    setupFormValidation();
-    
-    // Check if user is logged in (from localStorage)
+    initializeDateInputs();
     checkAuthStatus();
     
-    // Fetch hotel chains for dropdown
+    // Initialize hotel select
+    const hotelSelect = document.getElementById('hotel-select');
+    if (hotelSelect) {
+        hotelSelect.innerHTML = '<option value="">All Hotels</option>';
+    }
+    
+    // Initialize search results container
+    const resultsContainer = document.getElementById('search-results');
+    if (resultsContainer) {
+        resultsContainer.innerHTML = `
+            <div class="empty-results">
+                <p>Search for rooms to see results.</p>
+            </div>
+        `;
+    }
+    
+    // Show search section and load hotel chains
+    showSection('search-section');
+    
+    // Load hotel chains immediately
     fetchHotelChains();
     
-    // Initialize date inputs with default values
-    initializeDateInputs();
-    
-    // Load database views
-    loadDatabaseViews();
-    
-    // Toggle employee fields in registration form
-    const isEmployeeCheckbox = document.getElementById('regIsEmployee');
-    if (isEmployeeCheckbox) {
-        isEmployeeCheckbox.addEventListener('change', function() {
-            const employeeFields = document.getElementById('employeeFields');
-            if (this.checked) {
-                employeeFields.classList.remove('hidden');
-                document.getElementById('regHotelId').setAttribute('required', '');
-                document.getElementById('regPosition').setAttribute('required', '');
-                
-                // Load hotels for dropdown
-                loadHotelsForRegistration();
+    // Add event listener for hotel chain selection
+    const chainSelect = document.getElementById('chain-select');
+    if (chainSelect) {
+        chainSelect.addEventListener('change', async (e) => {
+            const chainId = e.target.value;
+            if (chainId) {
+                await loadHotelsByChain(chainId);
             } else {
-                employeeFields.classList.add('hidden');
-                document.getElementById('regHotelId').removeAttribute('required');
-                document.getElementById('regPosition').removeAttribute('required');
+                // Clear hotel selection if no chain is selected
+                const hotelSelect = document.getElementById('hotel-select');
+                hotelSelect.innerHTML = '<option value="">All Hotels</option>';
             }
         });
     }
+    
+    // Add event listener for search form submission
+    const searchForm = document.getElementById('search-form');
+    if (searchForm) {
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            searchRooms();
+        });
+    }
+    
+    // Add event listener for search section
+    document.getElementById('search-section').addEventListener('show', () => {
+        fetchHotelChains(); // Reload hotel chains when search section is shown
+    });
 });
 
 // Setup form validation
@@ -1173,30 +1149,44 @@ function checkAuthStatus() {
 }
 
 // Fetch hotel chains for dropdown
-function fetchHotelChains() {
-    fetch('/api/hotels')
-        .then(response => response.json())
-        .then(hotels => {
-            // Create a map of unique chains
-            const chains = new Map();
-            hotels.forEach(hotel => {
-                if (hotel.chain_id && !chains.has(hotel.chain_id)) {
-                    chains.set(hotel.chain_id, hotel.chain_name || 'Unknown Chain');
-                }
-            });
-            
-            // Populate dropdown
-            const chainSelect = document.getElementById('hotelChain');
-            chainSelect.innerHTML = '<option value="">Any</option>';
-            
-            chains.forEach((name, id) => {
+async function fetchHotelChains() {
+    try {
+        console.log('Fetching hotel chains...');
+        const response = await fetch('/api/hotel-chains');
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('Error response:', error);
+            throw new Error(`Failed to load hotel chains: ${error.error || 'Unknown error'}`);
+        }
+        
+        const chains = await response.json();
+        console.log('Fetched chains:', chains);
+        
+        const chainSelect = document.getElementById('chain-select');
+        if (!chainSelect) {
+            console.error('Chain select element not found');
+            return;
+        }
+        
+        chainSelect.innerHTML = '<option value="">All Chains</option>';
+        
+        if (chains && chains.length > 0) {
+            chains.forEach(chain => {
                 const option = document.createElement('option');
-                option.value = id;
-                option.textContent = name;
+                option.value = chain.id;
+                option.textContent = chain.name;
                 chainSelect.appendChild(option);
             });
-        })
-        .catch(error => console.error('Error loading hotel chains:', error));
+            console.log('Hotel chains loaded successfully');
+        } else {
+            console.log('No hotel chains found in the response');
+        }
+    } catch (error) {
+        console.error('Error loading hotel chains:', error);
+        showNotification('Error loading hotel chains: ' + error.message, 'error');
+    }
 }
 
 // Load hotels for employee registration
@@ -1223,5 +1213,27 @@ async function loadHotelsForRegistration() {
     } catch (error) {
         console.error('Error loading hotels:', error);
         showNotification('Failed to load hotels. Please try again.', 'error');
+    }
+}
+
+// Load hotels by chain
+async function loadHotelsByChain(chainId) {
+    try {
+        const response = await fetch(`/api/hotel-chains/${chainId}/hotels`);
+        if (!response.ok) throw new Error('Failed to load hotels');
+        const hotels = await response.json();
+        
+        const hotelSelect = document.getElementById('hotel-select');
+        hotelSelect.innerHTML = '<option value="">All Hotels</option>';
+        
+        hotels.forEach(hotel => {
+            const option = document.createElement('option');
+            option.value = hotel.id;
+            option.textContent = `${hotel.name} (${'★'.repeat(hotel.category)})`;
+            hotelSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading hotels:', error);
+        showNotification('Error loading hotels', 'error');
     }
 }

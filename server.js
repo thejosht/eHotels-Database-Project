@@ -4,6 +4,8 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
 
@@ -243,120 +245,154 @@ app.get('/api/hotels', async (req, res) => {
     }
 });
 
-// Get hotel chains
+// Get all hotel chains
 app.get('/api/hotel-chains', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM hotel_chain');
+        // Set headers to prevent caching
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.set('Expires', '0');
+        res.set('Pragma', 'no-cache');
+        
+        console.log('Fetching hotel chains from database...');
+        const result = await pool.query('SELECT * FROM hotel_chain ORDER BY name');
+        console.log('Query result:', result.rows);
+        
+        if (!result.rows || result.rows.length === 0) {
+            console.log('No hotel chains found in database');
+            return res.json([]);
+        }
+        
+        console.log(`Found ${result.rows.length} hotel chains`);
         res.json(result.rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+    } catch (error) {
+        console.error('Error fetching hotel chains:', error);
+        res.status(500).json({ error: 'Internal server error: ' + error.message });
+    }
+});
+
+// Get hotels by chain
+app.get('/api/hotel-chains/:chainId/hotels', async (req, res) => {
+    try {
+        const { chainId } = req.params;
+        const result = await pool.query(
+            'SELECT * FROM hotel WHERE chain_id = $1 ORDER BY name',
+            [chainId]
+        );
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error fetching hotels by chain:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
 // Room routes
 app.get('/api/rooms/available', async (req, res) => {
     try {
-        const { checkIn, checkOut, capacity, area, chainId, category, maxPrice } = req.query;
-        
-        console.log('Search parameters:', { checkIn, checkOut, capacity, area, chainId, category, maxPrice });
-        
-        if (!checkIn || !checkOut) {
-            return res.status(400).json({ error: 'Check-in and check-out dates are required' });
-        }
-        
+        const {
+            checkIn,
+            checkOut,
+            capacity,
+            area,
+            chainId,
+            category,
+            maxPrice,
+            minPrice,
+            seaView,
+            mountainView,
+            extendable
+        } = req.query;
+
         let query = `
-            SELECT r.*, h.name as hotel_name, h.category, h.address, h.chain_id, c.name as chain_name
+            SELECT 
+                r.*,
+                h.name as hotel_name,
+                h.address as hotel_address,
+                h.category as hotel_category,
+                hc.name as chain_name
             FROM room r
             JOIN hotel h ON r.hotel_id = h.id
-            LEFT JOIN hotel_chain c ON h.chain_id = c.id
+            JOIN hotel_chain hc ON h.chain_id = hc.id
             WHERE r.status = 'available'
-            AND r.id NOT IN (
-                SELECT room_id FROM booking 
-                WHERE (check_in_date <= $1 AND check_out_date >= $2)
-                OR (check_in_date <= $2 AND check_out_date >= $1)
+            AND NOT EXISTS (
+                SELECT 1 FROM booking b
+                WHERE b.room_id = r.id
+                AND b.status = 'pending'
+                AND (
+                    (b.check_in_date <= $1 AND b.check_out_date > $1)
+                    OR (b.check_in_date < $2 AND b.check_out_date >= $2)
+                    OR (b.check_in_date >= $1 AND b.check_out_date <= $2)
+                )
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM renting rn
+                WHERE rn.room_id = r.id
+                AND rn.status = 'active'
+                AND (
+                    (rn.check_in_date <= $1 AND rn.check_out_date > $1)
+                    OR (rn.check_in_date < $2 AND rn.check_out_date >= $2)
+                    OR (rn.check_in_date >= $1 AND rn.check_out_date <= $2)
+                )
             )
         `;
-        
-        const params = [checkIn, checkOut];
-        let paramCount = 2;
-        
-        if (capacity && capacity !== '') {
-            paramCount++;
-            params.push(capacity);
+
+        const queryParams = [checkIn, checkOut];
+        let paramCount = 3;
+
+        if (capacity) {
             query += ` AND r.capacity = $${paramCount}`;
-        }
-        if (maxPrice && maxPrice !== '') {
+            queryParams.push(capacity);
             paramCount++;
-            params.push(maxPrice);
-            query += ` AND r.price <= $${paramCount}`;
         }
-        if (category && category !== '') {
-            paramCount++;
-            params.push(category);
-            query += ` AND h.category = $${paramCount}`;
-        }
-        if (area && area.trim() !== '') {
-            paramCount++;
-            params.push(`%${area}%`);
+
+        if (area) {
             query += ` AND h.address ILIKE $${paramCount}`;
-        }
-        if (chainId && chainId !== '') {
+            queryParams.push(`%${area}%`);
             paramCount++;
-            params.push(chainId);
-            query += ` AND h.chain_id = $${paramCount}`;
         }
-        
-        console.log('Search query:', query);
-        console.log('Search params:', params);
-        
-        const result = await pool.query(query, params);
-        console.log(`Found ${result.rows.length} rooms matching criteria`);
-        
-        // Enhance room data with amenities
-        const enhancedRooms = await Promise.all(result.rows.map(async (room) => {
-            try {
-                // Check if amenity table exists
-                const tableCheckQuery = `
-                    SELECT EXISTS (
-                        SELECT FROM information_schema.tables 
-                        WHERE table_name = 'amenity'
-                    );
-                `;
-                const tableCheckResult = await pool.query(tableCheckQuery);
-                
-                if (tableCheckResult.rows[0].exists) {
-                    const amenitiesQuery = `
-                        SELECT a.name 
-                        FROM amenity a
-                        JOIN room_amenity ra ON a.id = ra.amenity_id
-                        WHERE ra.room_id = $1
-                    `;
-                    const amenitiesResult = await pool.query(amenitiesQuery, [room.id]);
-                    const amenities = amenitiesResult.rows.map(a => a.name);
-                    
-                    return {
-                        ...room,
-                        amenities: amenities
-                    };
-                } else {
-                    return {
-                        ...room,
-                        amenities: []
-                    };
-                }
-            } catch (error) {
-                console.error('Error fetching amenities for room:', room.id, error);
-                return {
-                    ...room,
-                    amenities: []
-                };
-            }
-        }));
-        
-        res.json(enhancedRooms);
-    } catch (err) {
-        console.error('Error searching for rooms:', err);
-        res.status(500).json({ error: 'An error occurred while searching for rooms' });
+
+        if (chainId) {
+            query += ` AND h.chain_id = $${paramCount}`;
+            queryParams.push(chainId);
+            paramCount++;
+        }
+
+        if (category) {
+            query += ` AND h.category = $${paramCount}`;
+            queryParams.push(category);
+            paramCount++;
+        }
+
+        if (minPrice) {
+            query += ` AND r.price >= $${paramCount}`;
+            queryParams.push(minPrice);
+            paramCount++;
+        }
+
+        if (maxPrice) {
+            query += ` AND r.price <= $${paramCount}`;
+            queryParams.push(maxPrice);
+            paramCount++;
+        }
+
+        if (seaView === 'true') {
+            query += ` AND r.sea_view = true`;
+        }
+
+        if (mountainView === 'true') {
+            query += ` AND r.mountain_view = true`;
+        }
+
+        if (extendable === 'true') {
+            query += ` AND r.extendable = true`;
+        }
+
+        query += ` ORDER BY r.price ASC`;
+
+        const result = await pool.query(query, queryParams);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error searching rooms:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -652,8 +688,54 @@ app.post('/api/bookings/:id/cancel', authenticateToken, async (req, res) => {
     }
 });
 
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+// Test database connection
+app.get('/api/test-db', async (req, res) => {
+    try {
+        console.log('Testing database connection...');
+        const result = await pool.query('SELECT NOW()');
+        console.log('Database connection successful:', result.rows[0]);
+        res.json({ success: true, timestamp: result.rows[0].now });
+    } catch (error) {
+        console.error('Database connection error:', error);
+        res.status(500).json({ error: 'Database connection failed: ' + error.message });
+    }
+});
+
+// Check and initialize database
+async function checkAndInitializeDatabase() {
+    try {
+        console.log('Checking database initialization...');
+        
+        // Check if hotel_chain table exists and has data
+        const chainCheck = await pool.query('SELECT COUNT(*) FROM hotel_chain');
+        console.log('Hotel chain count:', chainCheck.rows[0].count);
+        
+        if (chainCheck.rows[0].count === '0') {
+            console.log('No hotel chains found, initializing database...');
+            
+            // Read and execute schema.sql
+            const schemaPath = path.join(__dirname, 'schema.sql');
+            const schema = fs.readFileSync(schemaPath, 'utf8');
+            await pool.query(schema);
+            console.log('Schema initialized');
+            
+            // Read and execute populate_data.sql
+            const dataPath = path.join(__dirname, 'populate_data.sql');
+            const data = fs.readFileSync(dataPath, 'utf8');
+            await pool.query(data);
+            console.log('Data populated');
+            
+            console.log('Database initialization complete');
+        } else {
+            console.log('Database already initialized');
+        }
+    } catch (error) {
+        console.error('Error checking/initializing database:', error);
+    }
+}
+
+// Call the function when the server starts
+app.listen(process.env.PORT || 3000, async () => {
+    console.log('Server is running on port', process.env.PORT || 3000);
+    await checkAndInitializeDatabase();
 });

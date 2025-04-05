@@ -9,9 +9,11 @@
 <body>
     <header>
         <nav>
-            <div class="logo"><a href="#" onclick="showSection('home-section'); return false;">e-Hotels</a></div>
+            <div class="logo">
+                <a href="#" class="home-link">e-Hotels</a>
+            </div>
             <div class="nav-links">
-                <a href="#" class="active">Home</a>
+                <a href="#" class="active home-link">Home</a>
                 <a href="#search">Search</a>
                 <a href="#bookings" id="bookingsLink" class="auth-required hidden">My Bookings</a>
                 <a href="#employee" id="employeeLink" class="employee-only hidden">Employee Dashboard</a>
@@ -119,7 +121,17 @@
             </div>
             
             <div id="pending-bookings" class="tab-content">
-                <h3>Pending Bookings</h3>
+                <div class="section-header">
+                    <h3>Pending Bookings</h3>
+                    <button onclick="refreshBookings()" class="refresh-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 4v6h-6"></path>
+                            <path d="M1 20v-6h6"></path>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
                 <div id="hotelBookings" class="bookings-list"></div>
             </div>
             
@@ -129,11 +141,15 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="walkInCustomer">Select Customer</label>
-                            <select id="walkInCustomer" required></select>
+                            <select id="walkInCustomer" required>
+                                <option value="">Select a customer</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label for="walkInRoom">Select Room</label>
-                            <select id="walkInRoom" required></select>
+                            <select id="walkInRoom" required>
+                                <option value="">Select a room</option>
+                            </select>
                         </div>
                     </div>
                     <div class="form-row">
@@ -149,7 +165,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="walkInPayment">Payment Amount</label>
-                            <input type="number" id="walkInPayment" required>
+                            <input type="number" id="walkInPayment" required min="0" step="0.01">
                         </div>
                     </div>
                     <button type="button" onclick="createDirectRenting()" class="action-button">Create Renting</button>
@@ -228,7 +244,7 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="regIdType">ID Type</label>
+                            <label for="regIdType">ID Type*</label>
                             <select id="regIdType" required>
                                 <option value="">Select ID Type</option>
                                 <option value="SSN">SSN (Social Security Number)</option>
@@ -238,7 +254,7 @@
                             <span class="validation-hint">Please select an ID type</span>
                         </div>
                         <div class="form-group">
-                            <label for="regIdNumber">ID Number</label>
+                            <label for="regIdNumber">ID Number*</label>
                             <input type="text" id="regIdNumber" required placeholder="Enter your ID number">
                             <span class="validation-hint">ID number is required</span>
                         </div>

@@ -59,16 +59,34 @@ nav {
 }
 
 .logo {
-    font-size: 1.8rem;
-    font-weight: 700;
+    font-size: 1.5rem;
+    font-weight: bold;
     color: var(--primary-color);
-    font-family: 'Playfair Display', serif;
+    transition: var(--transition);
 }
 
 .logo a {
-    color: inherit;
     text-decoration: none;
-    cursor: pointer;
+    color: inherit;
+}
+
+.logo:hover {
+    color: var(--secondary-color);
+}
+
+.home-link {
+    text-decoration: none;
+    color: inherit;
+    transition: var(--transition);
+}
+
+.home-link:hover {
+    color: var(--primary-color);
+}
+
+.home-link.active {
+    color: var(--primary-color);
+    font-weight: 600;
 }
 
 .nav-links a {
@@ -1122,3 +1140,81 @@ footer {
   .modal-content::-webkit-scrollbar {
     display: none; /* Chrome, Safari, Opera */
   }
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.refresh-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: var(--light-gray);
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.refresh-button:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.refresh-button svg {
+    transition: transform 0.3s ease;
+}
+
+.refresh-button:hover svg {
+    transform: rotate(180deg);
+}
+
+.booking-actions {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--light-gray);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.booking-actions .action-button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.booking-actions .action-button:hover {
+    background-color: var(--secondary-color);
+}
+
+.booking-actions .cancel-button {
+    background-color: var(--error);
+}
+
+.booking-actions .cancel-button:hover {
+    background-color: #c53030;
+}
+
+.empty-results {
+    text-align: center;
+    padding: 2rem;
+    background-color: var(--light-gray);
+    border-radius: var(--border-radius);
+}
+
+.empty-results img {
+    margin-bottom: 1rem;
+}
+
+.empty-results p {
+    color: var(--dark-gray);
+    margin-bottom: 1rem;
+}

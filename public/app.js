@@ -499,9 +499,44 @@ function displayUserBookings(bookings) {
                 <img src="https://cdn-icons-png.flaticon.com/512/927/927667.png" width="14" height="14" alt="Location" />
                 ${booking.hotel_address}
             </div>
+            ${booking.status === 'pending' ? `
+                <div class="booking-actions">
+                    <button onclick="cancelBooking('${booking.id}')" class="action-button cancel-button">
+                        Cancel Booking
+                    </button>
+                </div>
+            ` : ''}
         `;
         container.appendChild(card);
     });
+}
+
+async function cancelBooking(bookingId) {
+    if (!localStorage.getItem('token')) return;
+    
+    if (!confirm('Are you sure you want to cancel this booking?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/bookings/${bookingId}/cancel`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to cancel booking');
+        }
+        
+        showNotification('Booking cancelled successfully!');
+        fetchUserBookings(); // Refresh the bookings list
+    } catch (error) {
+        console.error('Error cancelling booking:', error);
+        showNotification(error.message || 'Failed to cancel booking', 'error');
+    }
 }
 
 // Employee Functions
@@ -515,12 +550,16 @@ async function fetchHotelBookings() {
             }
         });
         
-        if (!response.ok) throw new Error('Failed to fetch hotel bookings');
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to fetch hotel bookings');
+        }
         
         const bookings = await response.json();
         displayHotelBookings(bookings);
     } catch (error) {
         console.error('Error fetching hotel bookings:', error);
+        showNotification(error.message || 'Failed to fetch hotel bookings', 'error');
     }
 }
 
@@ -591,23 +630,55 @@ function displayHotelBookings(bookings) {
     container.innerHTML = '';
     
     if (bookings.length === 0) {
-        container.innerHTML = '<p>There are no pending bookings for your hotel.</p>';
+        container.innerHTML = `
+            <div class="empty-results">
+                <img src="https://cdn-icons-png.flaticon.com/512/4076/4076478.png" width="120">
+                <p>There are no pending bookings for your hotel.</p>
+            </div>
+        `;
         return;
     }
     
     bookings.forEach(booking => {
         const card = document.createElement('div');
-        card.className = 'booking-card';
+        card.className = 'booking-card pending-booking';
+        
+        // Calculate nights and total price
+        const checkIn = new Date(booking.check_in_date);
+        const checkOut = new Date(booking.check_out_date);
+        const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+        const totalPrice = booking.price * nights;
+        
         card.innerHTML = `
-            <h3>Booking #${booking.id.substr(0, 8)}</h3>
-            <p>Customer: ${booking.customer_name}</p>
-            <p>Room: ${booking.room_number}</p>
-            <p>Check-in: ${formatDate(booking.check_in_date)}</p>
-            <p>Check-out: ${formatDate(booking.check_out_date)}</p>
-            <p>Price: ${formatPrice(booking.price)}</p>
-            <button onclick="createRenting('${booking.id}', '${booking.customer_id}', '${booking.room_id}', '${booking.check_in_date}', '${booking.check_out_date}', ${booking.price})" class="action-button">
-                Check-in Customer
-            </button>
+            <div class="booking-header">
+                <h3>Booking #${booking.id.substr(0, 8)}</h3>
+                <div class="status-badge status-pending">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    PENDING
+                </div>
+            </div>
+            <div class="booking-details">
+                <div class="booking-info">
+                    <p><strong>Customer:</strong> ${booking.customer_name}</p>
+                    <p><strong>Room:</strong> ${booking.room_number}</p>
+                    <p><strong>Check-in:</strong> ${formatDate(booking.check_in_date)}</p>
+                    <p><strong>Check-out:</strong> ${formatDate(booking.check_out_date)}</p>
+                    <p><strong>Stay:</strong> ${nights} night${nights !== 1 ? 's' : ''}</p>
+                </div>
+                <div class="booking-price">
+                    <p class="price-label">Total</p>
+                    <p class="total-price">${formatPrice(totalPrice)}</p>
+                    <p class="price-breakdown">${formatPrice(booking.price)} × ${nights} nights</p>
+                </div>
+            </div>
+            <div class="booking-actions">
+                <button onclick="createRenting('${booking.id}', '${booking.customer_id}', '${booking.room_id}', '${booking.check_in_date}', '${booking.check_out_date}', ${totalPrice})" class="action-button">
+                    Check-in Customer
+                </button>
+            </div>
         `;
         container.appendChild(card);
     });
@@ -1027,8 +1098,14 @@ function setupNavigation() {
         link.addEventListener('click', function(e) {
             e.preventDefault();
             const href = this.getAttribute('href');
-            const target = href.substring(1);
+            const target = href.substring(1); // Remove the # from href
             console.log("Link clicked:", target);
+            
+            if (target === '') {
+                // Home link clicked (empty target)
+                showSection('home-section');
+                return;
+            }
             
             if (target === 'login') {
                 openModal('loginModal');
@@ -1037,26 +1114,20 @@ function setupNavigation() {
             } else if (target === 'logout') {
                 logout();
             } else if (target === 'search') {
-                // Direct handling for Search Rooms button
                 showSection('search-section');
             } else if (target === 'views') {
-                // Direct handling for Explore Hotels button
                 showSection('views-section');
-                // Load database views when accessed
                 loadDatabaseViews();
-            } else if (target) {
-                // For other navigation links
+            } else {
                 const sectionId = target + '-section';
                 showSection(sectionId);
-                
-                // Update active link in navigation
-                document.querySelectorAll('nav a').forEach(navLink => {
-                    navLink.classList.remove('active');
-                    if (navLink.getAttribute('href') === href) {
-                        navLink.classList.add('active');
-                    }
-                });
             }
+            
+            // Update active link
+            document.querySelectorAll('nav a').forEach(navLink => {
+                navLink.classList.remove('active');
+            });
+            this.classList.add('active');
         });
     });
     

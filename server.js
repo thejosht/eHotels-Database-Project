@@ -40,116 +40,92 @@ const authenticateToken = (req, res, next) => {
 // Auth routes
 app.post('/api/auth/register', async (req, res) => {
     try {
-        console.log('Registration request received:', req.body);
-        const { 
-            fullName, 
-            address, 
-            idType, 
-            idNumber, 
-            email, 
-            phone, 
-            password, 
+        const {
+            fullName,
+            address,
+            idType,
+            idNumber,
+            email,
+            phone,
+            password,
             isEmployee,
             hotelId,
             position,
             isManager
         } = req.body;
-        
-        // Basic validation
+
+        // Validate required fields
         if (!fullName || !address || !idType || !idNumber || !email || !phone || !password) {
-            return res.status(400).json({ error: 'All fields are required' });
+            return res.status(400).json({ error: 'All required fields must be provided' });
         }
-        
-        // Employee validation
-        if (isEmployee && (!hotelId || !position)) {
-            return res.status(400).json({ error: 'Hotel and position are required for employee registration' });
+
+        // Validate ID type
+        const validIdTypes = ['SSN', 'SIN', 'DL'];
+        if (!validIdTypes.includes(idType)) {
+            return res.status(400).json({ error: 'Invalid ID type' });
         }
-        
+
         // Check if email already exists
-        const emailCheckCustomer = await pool.query(
-            'SELECT * FROM customer WHERE email = $1', 
-            [email]
-        );
-        
-        const emailCheckEmployee = await pool.query(
-            'SELECT * FROM employee WHERE email = $1', 
-            [email]
-        );
-        
-        if (emailCheckCustomer.rows.length > 0 || emailCheckEmployee.rows.length > 0) {
-            console.log('Registration failed: Email already exists');
-            return res.status(400).json({ error: 'Email already in use' });
+        const emailCheck = await pool.query('SELECT id FROM customer WHERE email = $1', [email]);
+        if (emailCheck.rows.length > 0) {
+            return res.status(400).json({ error: 'Email already registered' });
         }
-        
-        // Check if ID already exists
-        const idCheckCustomer = await pool.query(
-            'SELECT * FROM customer WHERE id_type = $1 AND id_number = $2',
+
+        // Check if ID combination already exists
+        const idCheck = await pool.query(
+            'SELECT id FROM customer WHERE id_type = $1 AND id_number = $2',
             [idType, idNumber]
         );
-        
-        const idCheckEmployee = await pool.query(
-            'SELECT * FROM employee WHERE id_type = $1 AND id_number = $2',
-            [idType, idNumber]
-        );
-        
-        if (idCheckCustomer.rows.length > 0 || idCheckEmployee.rows.length > 0) {
-            console.log('Registration failed: ID already exists');
-            return res.status(400).json({ error: 'ID already in use' });
+        if (idCheck.rows.length > 0) {
+            return res.status(400).json({ error: 'ID number already registered' });
         }
-        
+
+        // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
-        console.log('Password hashed successfully');
-        
-        // Begin transaction
+
+        // Start transaction
         await pool.query('BEGIN');
-        
-        // Register differently based on role
+
+        // Insert customer
+        const customerResult = await pool.query(
+            `INSERT INTO customer 
+            (full_name, address, id_type, id_number, email, phone, password) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7) 
+            RETURNING id`,
+            [fullName, address, idType, idNumber, email, phone, hashedPassword]
+        );
+
+        const customerId = customerResult.rows[0].id;
+
+        // If registering as employee, insert employee record
         if (isEmployee) {
-            // Check if hotel exists
-            const hotelCheck = await pool.query('SELECT * FROM hotel WHERE id = $1', [hotelId]);
-            if (hotelCheck.rows.length === 0) {
+            if (!hotelId || !position) {
                 await pool.query('ROLLBACK');
-                return res.status(400).json({ error: 'Selected hotel does not exist' });
+                return res.status(400).json({ error: 'Hotel ID and position are required for employee registration' });
             }
-            
-            // Register employee
-            const result = await pool.query(
+
+            await pool.query(
                 `INSERT INTO employee 
-                (full_name, address, id_type, id_number, email, phone, password, hotel_id, position, is_manager) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-                [fullName, address, idType, idNumber, email, phone, hashedPassword, hotelId, position, isManager || false]
+                (hotel_id, full_name, address, ssn, role, is_manager, email, phone) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+                [hotelId, fullName, address, idNumber, position, isManager, email, phone]
             );
-            
-            await pool.query('COMMIT');
-            console.log('Registration successful, employee ID:', result.rows[0].id);
-            
-            return res.status(201).json({ 
-                message: 'Employee registration successful',
-                userId: result.rows[0].id,
-                userType: 'employee'
-            });
-        } else {
-            // Register customer
-            const result = await pool.query(
-                `INSERT INTO customer 
-                (full_name, address, id_type, id_number, email, phone, password) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-                [fullName, address, idType, idNumber, email, phone, hashedPassword]
-            );
-            
-            await pool.query('COMMIT');
-            console.log('Registration successful, customer ID:', result.rows[0].id);
-            
-            return res.status(201).json({ 
-                message: 'Customer registration successful',
-                userId: result.rows[0].id,
-                userType: 'customer'
-            });
         }
+
+        await pool.query('COMMIT');
+
+        // Generate JWT token
+        const token = jwt.sign(
+            { id: customerId, role: isEmployee ? 'employee' : 'customer' },
+            process.env.JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        res.json({ token, userType: isEmployee ? 'employee' : 'customer' });
     } catch (err) {
         await pool.query('ROLLBACK');
-        console.error('Registration error:', err);
-        res.status(500).json({ error: err.message });
+        console.error('Error in registration:', err);
+        res.status(500).json({ error: 'Registration failed' });
     }
 });
 
@@ -445,13 +421,21 @@ app.get('/api/employee/bookings', authenticateToken, async (req, res) => {
         
         // Get bookings for this hotel
         const bookingsQuery = `
-            SELECT b.*, c.full_name as customer_name, c.id as customer_id, 
-                   r.room_number, r.price, h.name as hotel_name
+            SELECT 
+                b.*, 
+                c.full_name as customer_name, 
+                c.id as customer_id, 
+                r.room_number, 
+                r.price, 
+                h.name as hotel_name,
+                r.id as room_id
             FROM booking b
             JOIN customer c ON b.customer_id = c.id
             JOIN room r ON b.room_id = r.id
             JOIN hotel h ON r.hotel_id = h.id
-            WHERE r.hotel_id = $1 AND b.status = 'pending'
+            WHERE r.hotel_id = $1 
+            AND b.status = 'pending'
+            AND b.check_in_date >= CURRENT_DATE
             ORDER BY b.check_in_date ASC
         `;
         
@@ -459,6 +443,7 @@ app.get('/api/employee/bookings', authenticateToken, async (req, res) => {
         
         res.json(result.rows);
     } catch (err) {
+        console.error('Error fetching employee bookings:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -612,6 +597,57 @@ app.get('/api/views/hotel-capacity', async (req, res) => {
         const result = await pool.query('SELECT * FROM hotel_capacity');
         res.json(result.rows);
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/bookings/:id/cancel', authenticateToken, async (req, res) => {
+    try {
+        const bookingId = req.params.id;
+        const customerId = req.user.id;
+        
+        // Verify the booking belongs to the customer
+        const bookingQuery = `
+            SELECT b.*, r.hotel_id
+            FROM booking b
+            JOIN room r ON b.room_id = r.id
+            WHERE b.id = $1 AND b.customer_id = $2
+        `;
+        
+        const bookingResult = await pool.query(bookingQuery, [bookingId, customerId]);
+        
+        if (bookingResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Booking not found or unauthorized' });
+        }
+        
+        const booking = bookingResult.rows[0];
+        
+        // Check if the booking can be cancelled (e.g., not already cancelled or completed)
+        if (booking.status !== 'pending') {
+            return res.status(400).json({ error: 'This booking cannot be cancelled' });
+        }
+        
+        // Start a transaction
+        await pool.query('BEGIN');
+        
+        // Update booking status to cancelled
+        await pool.query(
+            'UPDATE booking SET status = $1 WHERE id = $2',
+            ['cancelled', bookingId]
+        );
+        
+        // Update room status back to available
+        await pool.query(
+            'UPDATE room SET status = $1 WHERE id = $2',
+            ['available', booking.room_id]
+        );
+        
+        await pool.query('COMMIT');
+        
+        res.json({ message: 'Booking cancelled successfully' });
+    } catch (err) {
+        await pool.query('ROLLBACK');
+        console.error('Error cancelling booking:', err);
         res.status(500).json({ error: err.message });
     }
 });

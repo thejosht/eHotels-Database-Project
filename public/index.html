@@ -258,6 +258,38 @@
                         <input type="password" id="regPassword" required autocomplete="new-password" placeholder="Choose a password (min. 6 characters)">
                         <span class="validation-hint">Password must be at least 6 characters</span>
                     </div>
+                    
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="regIsEmployee">
+                        <label for="regIsEmployee">Register as an employee</label>
+                    </div>
+                    
+                    <div id="employeeFields" class="hidden">
+                        <div class="form-group">
+                            <label for="regHotelId">Hotel</label>
+                            <select id="regHotelId">
+                                <option value="">Select Hotel</option>
+                                <!-- Hotel options will be loaded dynamically -->
+                            </select>
+                            <span class="validation-hint">Required for employees</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="regPosition">Position</label>
+                            <select id="regPosition">
+                                <option value="">Select Position</option>
+                                <option value="receptionist">Receptionist</option>
+                                <option value="manager">Manager</option>
+                                <option value="housekeeping">Housekeeping</option>
+                                <option value="maintenance">Maintenance</option>
+                            </select>
+                            <span class="validation-hint">Required for employees</span>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" id="regIsManager">
+                            <label for="regIsManager">Register as a manager</label>
+                        </div>
+                    </div>
+                    
                     <div class="form-note">All fields are required</div>
                     <button type="submit">Create Account</button>
                     <p class="form-alt-action">Already have an account? <a href="#" onclick="openModal('loginModal'); closeModal('registerModal'); return false;">Log in</a></p>

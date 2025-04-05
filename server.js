@@ -41,18 +41,49 @@ const authenticateToken = (req, res, next) => {
 app.post('/api/auth/register', async (req, res) => {
     try {
         console.log('Registration request received:', req.body);
-        const { fullName, address, idType, idNumber, email, phone, password } = req.body;
+        const { 
+            fullName, 
+            address, 
+            idType, 
+            idNumber, 
+            email, 
+            phone, 
+            password, 
+            isEmployee,
+            hotelId,
+            position,
+            isManager
+        } = req.body;
+        
+        // Basic validation
+        if (!fullName || !address || !idType || !idNumber || !email || !phone || !password) {
+            return res.status(400).json({ error: 'All fields are required' });
+        }
+        
+        // Employee validation
+        if (isEmployee && (!hotelId || !position)) {
+            return res.status(400).json({ error: 'Hotel and position are required for employee registration' });
+        }
         
         // Check if email already exists
-        const existingUser = await pool.query('SELECT * FROM customer WHERE email = $1', [email]);
-        if (existingUser.rows.length > 0) {
+        const emailCheck = await pool.query(
+            'SELECT * FROM customer WHERE email = $1 UNION SELECT * FROM employee WHERE email = $1', 
+            [email]
+        );
+        
+        if (emailCheck.rows.length > 0) {
             console.log('Registration failed: Email already exists');
             return res.status(400).json({ error: 'Email already in use' });
         }
         
         // Check if ID already exists
-        const existingId = await pool.query('SELECT * FROM customer WHERE id_type = $1 AND id_number = $2', [idType, idNumber]);
-        if (existingId.rows.length > 0) {
+        const idCheck = await pool.query(
+            'SELECT * FROM customer WHERE id_type = $1 AND id_number = $2 UNION ' +
+            'SELECT * FROM employee WHERE id_type = $1 AND id_number = $2',
+            [idType, idNumber]
+        );
+        
+        if (idCheck.rows.length > 0) {
             console.log('Registration failed: ID already exists');
             return res.status(400).json({ error: 'ID already in use' });
         }
@@ -60,14 +91,54 @@ app.post('/api/auth/register', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         console.log('Password hashed successfully');
         
-        const result = await pool.query(
-            'INSERT INTO customer (full_name, address, id_type, id_number, email, phone, password) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
-            [fullName, address, idType, idNumber, email, phone, hashedPassword]
-        );
+        // Begin transaction
+        await pool.query('BEGIN');
         
-        console.log('Registration successful, customer ID:', result.rows[0].id);
-        res.status(201).json({ message: 'Registration successful' });
+        // Register differently based on role
+        if (isEmployee) {
+            // Check if hotel exists
+            const hotelCheck = await pool.query('SELECT * FROM hotel WHERE id = $1', [hotelId]);
+            if (hotelCheck.rows.length === 0) {
+                await pool.query('ROLLBACK');
+                return res.status(400).json({ error: 'Selected hotel does not exist' });
+            }
+            
+            // Register employee
+            const result = await pool.query(
+                `INSERT INTO employee 
+                (full_name, address, id_type, id_number, email, phone, password, hotel_id, position, is_manager) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+                [fullName, address, idType, idNumber, email, phone, hashedPassword, hotelId, position, isManager || false]
+            );
+            
+            await pool.query('COMMIT');
+            console.log('Registration successful, employee ID:', result.rows[0].id);
+            
+            return res.status(201).json({ 
+                message: 'Employee registration successful',
+                userId: result.rows[0].id,
+                userType: 'employee'
+            });
+        } else {
+            // Register customer
+            const result = await pool.query(
+                `INSERT INTO customer 
+                (full_name, address, id_type, id_number, email, phone, password) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+                [fullName, address, idType, idNumber, email, phone, hashedPassword]
+            );
+            
+            await pool.query('COMMIT');
+            console.log('Registration successful, customer ID:', result.rows[0].id);
+            
+            return res.status(201).json({ 
+                message: 'Customer registration successful',
+                userId: result.rows[0].id,
+                userType: 'customer'
+            });
+        }
     } catch (err) {
+        await pool.query('ROLLBACK');
         console.error('Registration error:', err);
         res.status(500).json({ error: err.message });
     }

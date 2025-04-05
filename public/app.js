@@ -66,6 +66,21 @@ async function register() {
     const email = document.getElementById('regEmail').value;
     const phone = document.getElementById('regPhone').value;
     const password = document.getElementById('regPassword').value;
+    const isEmployee = document.getElementById('regIsEmployee').checked;
+    
+    // Employee specific fields
+    let hotelId, position, isManager;
+    if (isEmployee) {
+        hotelId = document.getElementById('regHotelId').value;
+        position = document.getElementById('regPosition').value;
+        isManager = document.getElementById('regIsManager').checked;
+        
+        // Validate employee fields
+        if (!hotelId || !position) {
+            showNotification('Please fill out all employee fields', 'error');
+            return;
+        }
+    }
 
     // Basic validation
     if (!fullName || !address || !idType || !idNumber || !email || !phone || !password) {
@@ -93,14 +108,31 @@ async function register() {
         registerBtn.disabled = true;
         registerBtn.textContent = 'Creating account...';
 
+        // Build request payload
+        const payload = {
+            fullName, 
+            address, 
+            idType, 
+            idNumber, 
+            email, 
+            phone, 
+            password,
+            isEmployee
+        };
+        
+        // Add employee fields if registering as employee
+        if (isEmployee) {
+            payload.hotelId = hotelId;
+            payload.position = position;
+            payload.isManager = isManager;
+        }
+
         const response = await fetch('/api/auth/register', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                fullName, address, idType, idNumber, email, phone, password
-            })
+            body: JSON.stringify(payload)
         });
 
         const data = await response.json();
@@ -122,13 +154,18 @@ async function register() {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ email, password, isEmployee: false })
+                body: JSON.stringify({ 
+                    email, 
+                    password, 
+                    isEmployee 
+                })
             });
 
             if (!loginResponse.ok) {
                 // If auto-login fails, just show the login modal
                 openModal('loginModal');
                 document.getElementById('loginEmail').value = email;
+                document.getElementById('isEmployee').checked = isEmployee;
                 showNotification('Registration successful! Please log in.', 'success');
                 return;
             }
@@ -143,6 +180,8 @@ async function register() {
             // Load appropriate data
             if (userType === 'customer') {
                 fetchUserBookings();
+            } else if (userType === 'employee') {
+                fetchHotelBookings();
             }
             
             // Show success message
@@ -152,6 +191,7 @@ async function register() {
             // If auto-login fails, show login modal
             openModal('loginModal');
             document.getElementById('loginEmail').value = email;
+            document.getElementById('isEmployee').checked = isEmployee;
             showNotification('Registration successful! Please log in.', 'success');
         }
     } catch (error) {
@@ -856,6 +896,26 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load database views
     loadDatabaseViews();
+    
+    // Toggle employee fields in registration form
+    const isEmployeeCheckbox = document.getElementById('regIsEmployee');
+    if (isEmployeeCheckbox) {
+        isEmployeeCheckbox.addEventListener('change', function() {
+            const employeeFields = document.getElementById('employeeFields');
+            if (this.checked) {
+                employeeFields.classList.remove('hidden');
+                document.getElementById('regHotelId').setAttribute('required', '');
+                document.getElementById('regPosition').setAttribute('required', '');
+                
+                // Load hotels for dropdown
+                loadHotelsForRegistration();
+            } else {
+                employeeFields.classList.add('hidden');
+                document.getElementById('regHotelId').removeAttribute('required');
+                document.getElementById('regPosition').removeAttribute('required');
+            }
+        });
+    }
 });
 
 // Setup form validation
@@ -1066,4 +1126,31 @@ function fetchHotelChains() {
             });
         })
         .catch(error => console.error('Error loading hotel chains:', error));
+}
+
+// Load hotels for employee registration
+async function loadHotelsForRegistration() {
+    try {
+        const response = await fetch('/api/hotels');
+        if (!response.ok) {
+            throw new Error('Failed to fetch hotels');
+        }
+        
+        const hotels = await response.json();
+        const hotelSelect = document.getElementById('regHotelId');
+        
+        // Clear existing options
+        hotelSelect.innerHTML = '<option value="">Select Hotel</option>';
+        
+        // Add hotels to dropdown
+        hotels.forEach(hotel => {
+            const option = document.createElement('option');
+            option.value = hotel.id;
+            option.textContent = `${hotel.name} (${hotel.address})`;
+            hotelSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading hotels:', error);
+        showNotification('Failed to load hotels. Please try again.', 'error');
+    }
 }

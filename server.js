@@ -706,31 +706,74 @@ async function checkAndInitializeDatabase() {
     try {
         console.log('Checking database initialization...');
         
-        // Check if hotel_chain table exists and has data
+        // First check if the hotel_chain table exists
+        try {
+            console.log('Checking if hotel_chain table exists...');
+            const tableCheck = await pool.query(`
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'hotel_chain'
+                );
+            `);
+            console.log('Table check result:', tableCheck.rows[0]);
+            
+            if (!tableCheck.rows[0].exists) {
+                console.log('hotel_chain table does not exist, will create schema...');
+                // Read and execute schema.sql
+                const schemaPath = path.join(__dirname, 'schema.sql');
+                console.log('Reading schema from:', schemaPath);
+                const schema = fs.readFileSync(schemaPath, 'utf8');
+                await pool.query(schema);
+                console.log('Schema created successfully');
+            }
+        } catch (tableError) {
+            console.error('Error checking table existence:', tableError);
+            throw tableError;
+        }
+        
+        // Now check if there's data in the hotel_chain table
+        console.log('Checking if hotel_chain table has data...');
         const chainCheck = await pool.query('SELECT COUNT(*) FROM hotel_chain');
         console.log('Hotel chain count:', chainCheck.rows[0].count);
         
         if (chainCheck.rows[0].count === '0') {
-            console.log('No hotel chains found, initializing database...');
-            
-            // Read and execute schema.sql
-            const schemaPath = path.join(__dirname, 'schema.sql');
-            const schema = fs.readFileSync(schemaPath, 'utf8');
-            await pool.query(schema);
-            console.log('Schema initialized');
+            console.log('No hotel chains found, initializing database with sample data...');
             
             // Read and execute populate_data.sql
             const dataPath = path.join(__dirname, 'populate_data.sql');
+            console.log('Reading sample data from:', dataPath);
             const data = fs.readFileSync(dataPath, 'utf8');
-            await pool.query(data);
-            console.log('Data populated');
             
-            console.log('Database initialization complete');
+            // Split the data into individual statements
+            const statements = data.split(';').filter(stmt => stmt.trim());
+            console.log(`Found ${statements.length} SQL statements to execute`);
+            
+            // Execute each statement separately
+            for (let i = 0; i < statements.length; i++) {
+                const stmt = statements[i];
+                if (stmt.trim()) {
+                    try {
+                        await pool.query(stmt);
+                        console.log(`Executed statement ${i + 1}/${statements.length}`);
+                    } catch (error) {
+                        console.error(`Error executing statement ${i + 1}:`, error);
+                        throw error;
+                    }
+                }
+            }
+            
+            console.log('Sample data populated successfully');
+            
+            // Verify the data was inserted
+            const verifyCheck = await pool.query('SELECT COUNT(*) FROM hotel_chain');
+            console.log('Verified hotel chain count:', verifyCheck.rows[0].count);
         } else {
-            console.log('Database already initialized');
+            console.log('Database already contains hotel chains');
         }
     } catch (error) {
         console.error('Error checking/initializing database:', error);
+        throw error;
     }
 }
 
